@@ -31,13 +31,9 @@ def extract_details(soup):
     if content_div:
         key_info = content_div.findAll('span', class_='key-info__content')
         for info in key_info:
-            print(info.text.strip())  # Print each piece of key information
-
-        # Print email links
-        email_links = content_div.findAll('a', class_='emailLink')
-        for email in email_links:
-            print(f"Email Name: {email.get('data-email-name', 'N/A')}")
-            print(f"Email Address: {email['data-email-addr']}")  # Assuming email address is always present
+            text = info.text.strip()
+            if "Applications accepted all year round" not in text:
+                print(text)  # Print each piece of key information without unwanted text
 
 # URL of the PhD listings
 url = 'https://www.findaphd.com/phds/usa/?g00l20'
