@@ -29,11 +29,30 @@ def extract_details(soup):
     # Locate the container of interest
     content_div = soup.find('div', class_='page-content row px-0')
     if content_div:
+        # Extract and print the university name
+        university_info = content_div.find('a', class_='instLink')
+        if university_info:
+            university_name = university_info.text.strip()
+            print(f"University: {university_name}")
+
+        # Extract and print key information avoiding specific text
         key_info = content_div.findAll('span', class_='key-info__content')
         for info in key_info:
             text = info.text.strip()
             if "Applications accepted all year round" not in text:
-                print(text)  # Print each piece of key information without unwanted text
+                print(text)
+
+        # Print email links and email addresses
+        email_links = content_div.findAll('a', class_='emailLink')
+        for email in email_links:
+            email_name = email.get('data-email-name', 'N/A')
+            email_addr = email['data-email-addr']
+            print(f"Email Name: {email_name}")
+
+        # Print the country if available
+        country_flag = content_div.find('img', class_='country-flag img-responsive phd-result__dept-inst--country-icon')
+        if country_flag and country_flag.has_attr('title'):
+            print(f"Country: {country_flag['title']}")
 
 # URL of the PhD listings
 url = 'https://www.findaphd.com/phds/usa/?g00l20'
