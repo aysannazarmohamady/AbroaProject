@@ -68,6 +68,19 @@ def fetch_details(url):
         
         if logo_url:
             print(f"Logo: {logo_url}")
+        
+        # Find and print expressions containing ".edu" in all <p> elements
+        paragraphs = soup.find_all("p")
+        for paragraph in paragraphs:
+            text = paragraph.text.strip()  # Get the text of the paragraph and strip any leading/trailing whitespace
+            if ".edu" in text:  # Check if the text contains ".edu"
+                # Find all expressions with ".edu" in the text
+                edu_expressions = [word for word in text.split() if ".edu" in word]
+                for edu_expression in edu_expressions:
+                    # Print the .edu expression only if it's not the same as the email
+                    if edu_expression.lower() != (email_phrase.lower() if email_phrase else ""):
+                        print(f"Expression containing .edu: {edu_expression}")
+
     except AttributeError as e:
         print("Some information could not be extracted.")
     print("---------------------------------------------------------------\n")
