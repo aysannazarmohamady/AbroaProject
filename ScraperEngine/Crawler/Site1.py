@@ -44,13 +44,20 @@ def fetch_details(url):
     try:
         university = soup.select_one(".phd-header__institution").text.strip()
         field = soup.select_one(".phd-header__department").text.strip()
-        supervisor_info = soup.select_one(".emailLink[data-email-name]").text.strip()
-        description_content = soup.select_one("#phd__holder > div > div > div.col-24.px-0.px-md-3.col-md-17 > div.phd-sections.phd-sections__description.row.mx-0.ml-md-n3.mr-md-0.my-3 > div")
+        supervisor_info = soup.select_one(".emailLink[data-email-name]")
+        
+        description_content = soup.select_one(
+            "#phd__holder > div > div > div.col-24.px-0.px-md-3.col-md-17 > div.phd-sections.phd-sections__description.row.mx-0.ml-md-n3.mr-md-0.my-3 > div"
+        )
         email_phrase = next((s for s in description_content.stripped_strings if '@' in s), None)
         
         print(f"University: {university}")
-        print(f"Field: {field}")
-        print(f"Supervisor: {supervisor_info}")
+        print(f"Field Or Department: {field}")
+        
+        # Only print the supervisor's info if it doesn't contain "Register interest"
+        if supervisor_info and 'Register interest' not in supervisor_info.text:
+            print(f"Supervisor: {supervisor_info.text.strip()}")
+        
         if email_phrase:
             print(f"Email: {email_phrase}")
     except AttributeError as e:
