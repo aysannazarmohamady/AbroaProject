@@ -79,7 +79,7 @@ def fetch_details(url):
                 for edu_expression in edu_expressions:
                     # Print the .edu expression only if it's not the same as the email
                     if edu_expression.lower() != (email_phrase.lower() if email_phrase else ""):
-                        print(f"Expression containing .edu: {edu_expression}")
+                        print(f"More Websites or Contacs: {edu_expression}")
 
     except AttributeError as e:
         print("Some information could not be extracted.")
