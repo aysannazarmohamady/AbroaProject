@@ -31,10 +31,14 @@ def fetch_details(url):
         university = soup.select_one(".phd-header__institution").text.strip()
         field = soup.select_one(".phd-header__department").text.strip()
         supervisor_info = soup.select_one(".emailLink[data-email-name]").text.strip()
+        description_content = soup.select_one("#phd__holder > div > div > div.col-24.px-0.px-md-3.col-md-17 > div.phd-sections.phd-sections__description.row.mx-0.ml-md-n3.mr-md-0.my-3 > div")
+        email_phrase = next((s for s in description_content.stripped_strings if '@' in s), None)
         
         print(f"University: {university}")
         print(f"Field: {field}")
         print(f"Supervisor: {supervisor_info}")
+        if email_phrase:
+            print(f"Email: {email_phrase}")
     except AttributeError as e:
         print("Some information could not be extracted.")
     print("---------------------------------------------------------------\n")
