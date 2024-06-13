@@ -51,8 +51,12 @@ def fetch_details(url):
         )
         email_phrase = next((s for s in description_content.stripped_strings if '@' in s), None)
         
+        # Extract the logo URL
+        logo_tag = soup.select_one(".phd-sidebar__logo img")
+        logo_url = logo_tag.get('src') if logo_tag else None
+        
         print(f"University: {university}")
-        print(f"Field Or Department: {field}")
+        print(f"Branch Or Department: {field}")
         
         # Only print the supervisor's info if it doesn't contain "Register interest"
         if supervisor_info and 'Register interest' not in supervisor_info.text:
@@ -60,6 +64,9 @@ def fetch_details(url):
         
         if email_phrase:
             print(f"Email: {email_phrase}")
+        
+        if logo_url:
+            print(f"Logo: {logo_url}")
     except AttributeError as e:
         print("Some information could not be extracted.")
     print("---------------------------------------------------------------\n")
