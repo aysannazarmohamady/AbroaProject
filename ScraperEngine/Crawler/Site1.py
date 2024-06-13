@@ -1,59 +1,46 @@
 import requests
 from bs4 import BeautifulSoup
 
-def fetch_phd_positions(url):
-    # Fetch the main page content
+def fetch_data_by_url(url, start_index):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Find all div elements with the specific class
+    results = soup.find_all("div", class_="resultsRow phd-result-row-standard phd-result row py-2 w-100 px-0 m-0")
+    positions_found = 0
+    
+    for result in results:
+        title_tag = result.find("h3")
+        if title_tag:
+            title_link = title_tag.find("a", class_="h4 text-dark mx-0 mb-3")
+            if title_link:
+                # Increment the counter and print the position number and title
+                start_index += 1
+                detail_url = 'https://www.findaphd.com' + title_link.get('href')
+                print(f"{start_index}. Title of Position: {title_link.text.strip()}")
+                fetch_details(detail_url)  # Fetch detailed information for each PhD position
+                positions_found += 1
+    
+    return positions_found
 
-    # Find all PhD positions
-    results = soup.findAll('div', class_='resultsRow phd-result-row-standard phd-result row py-2 w-100 px-0 m-0')
-    for index, result in enumerate(results, start=1):
-        # Fetch the title of each PhD position
-        title_element = result.find('a', class_='h4 text-dark mx-0 mb-3')
-        if title_element:
-            title = title_element.text.strip()
-            print(f"{index}. Title: {title}")
+def fetch_details(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    try:
+        university = soup.select_one(".phd-header__institution").text.strip()
+        field = soup.select_one(".phd-header__department").text.strip()
+        supervisor_info = soup.select_one(".emailLink[data-email-name]").text.strip()
+        
+        print(f"University: {university}")
+        print(f"Field: {field}")
+        print(f"Supervisor: {supervisor_info}")
+    except AttributeError as e:
+        print("Some information could not be extracted.")
+    print("---------------------------------------------------------------\n")
 
-        # Follow the link to detail page
-        detail_link = result.find('a', class_='btn btn-block btn-success rounded-pill text-white')
-        if detail_link:
-            detail_url = 'https://www.findaphd.com' + detail_link['href']
-            detail_response = requests.get(detail_url)
-            detail_soup = BeautifulSoup(detail_response.text, 'html.parser')
-
-            # Extract and print detailed information
-            extract_details(detail_soup)
-
-def extract_details(soup):
-    # Locate the container of interest
-    content_div = soup.find('div', class_='page-content row px-0')
-    if content_div:
-        # Extract and print the university name
-        university_info = content_div.find('a', class_='instLink')
-        if university_info:
-            university_name = university_info.text.strip()
-            print(f"University: {university_name}")
-
-        # Extract and print key information avoiding specific text
-        key_info = content_div.findAll('span', class_='key-info__content')
-        for info in key_info:
-            text = info.text.strip()
-            if "Applications accepted all year round" not in text:
-                print(text)
-
-        # Print email links and email addresses
-        email_links = content_div.findAll('a', class_='emailLink')
-        for email in email_links:
-            email_name = email.get('data-email-name', 'N/A')
-            email_addr = email['data-email-addr']
-            print(f"Email Name: {email_name}")
-
-        # Print the country if available
-        country_flag = content_div.find('img', class_='country-flag img-responsive phd-result__dept-inst--country-icon')
-        if country_flag and country_flag.has_attr('title'):
-            print(f"Country: {country_flag['title']}")
-
-# URL of the PhD listings
-url = 'https://www.findaphd.com/phds/usa/?g00l20'
-fetch_phd_positions(url)
+# URL pattern and the initial start index
+start_index = 0
+for j in range(1, 4):  # Loop to change pages or process multiple sets of data
+    url = f"https://www.findaphd.com/phds/usa/?g00l20&PG={j}"
+    start_index += fetch_data_by_url(url, start_index)
