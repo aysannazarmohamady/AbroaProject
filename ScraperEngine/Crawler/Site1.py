@@ -23,6 +23,7 @@ def fetch_data_by_url(url, start_index):
                 detail_url = 'https://www.findaphd.com' + title_link.get('href')
                 print(f"{start_index}. Title of Position: {title_link.text.strip()}")
                 print(f"Country: {country}")
+                print(f"Link: {detail_url}")
                 fetch_details(detail_url)  # Fetch detailed information for each PhD position
                 positions_found += 1
     
