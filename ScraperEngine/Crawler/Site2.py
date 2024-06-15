@@ -27,17 +27,6 @@ def fetch_data_by_url(url, start_index):
                 if 'PhD' in title:
                     link = 'http://scholarshipdb.net' + a_tag['href']
                     result = {'Title': title, 'Link': link}
-                    
-                    divs = li.find_all('div')
-                    if divs and len(divs) > 1:
-                        location_info = divs[1].get_text(strip=True)
-                        result['Location Info'] = location_info
-                    
-                    p_tag = li.find('p')
-                    if p_tag:
-                        description = p_tag.get_text(strip=True)
-                        result['Description'] = description
-                    
                     results.append(result)
     
     return results
@@ -56,13 +45,8 @@ for base_url in urls:
         data = fetch_data_by_url(url, page_num)
         all_data.extend(data)
 
-# نمایش داده‌ها
-for item in all_data:
-    print(f"Title of Position: {item['Title']}")
-    print(f"Link: {item['Link']}")
-    if 'Location Info' in item:
-        print(f"Location Info: {item['Location Info']}")
-    if 'Description' in item:
-        print(f"Description: {item['Description']}")
+# نمایش داده‌ها با شماره‌گذاری
+for index, item in enumerate(all_data, start=1):
+    print(f"{index}. Title of Position: {item['Title']}")
+    print(f"   Link: {item['Link']}")
     print('-' * 50)
-
