@@ -6,12 +6,12 @@ def fetch_data_by_url(url, start_index, country):
     paginated_url = url.format(i=start_index)
     response = requests.get(paginated_url)
     response.raise_for_status()
-    
+
     soup = BeautifulSoup(response.text, 'html.parser')
     li_elements = soup.find_all('li')
-    
+
     results = []
-    
+
     for li in li_elements:
         h4_tag = li.find('h4')
         if h4_tag:
@@ -22,6 +22,7 @@ def fetch_data_by_url(url, start_index, country):
                     link = 'http://scholarshipdb.net' + a_tag['href']
                     university_name = extract_university_name_from_link(a_tag)
                     branch_department = fetch_branch_department_from_page(link)
+                    supervisor_name = fetch_supervisor_from_page(link)
                     if university_name == "Unknown University":
                         university_name = fetch_university_name_from_page(link)
                     result = {
@@ -29,10 +30,11 @@ def fetch_data_by_url(url, start_index, country):
                         'Link': link,
                         'Country': country,
                         'University': university_name,
-                        'Branch/Department': branch_department
+                        'Branch/Department': branch_department,
+                        'Supervisor': supervisor_name
                     }
                     results.append(result)
-    
+
     return results
 
 def extract_university_name_from_link(a_tag):
@@ -79,6 +81,23 @@ def extract_branch_department_from_text(text):
         return match.group(1).strip()
     return "Unknown Branch/Department"
 
+def fetch_supervisor_from_page(link):
+    try:
+        response = requests.get(link)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        text = soup.get_text()
+        supervisor_name = extract_supervisor_from_text(text)
+    except Exception as e:
+        supervisor_name = "Unknown Supervisor"
+    return supervisor_name
+
+def extract_supervisor_from_text(text):
+    match = re.search(r'(Supervisor[:\s]*[\w\s]+|Prof\. [\w\s]+|Dr\. [\w\s]+)', text, re.IGNORECASE)
+    if match:
+        return match.group(0).strip()
+    return "Unknown Supervisor"
+
 urls = [
     {'url': 'http://scholarshipdb.net/PhD-scholarships-in-United-States?page={i}', 'country': 'United States'},
     {'url': 'http://scholarshipdb.net/PhD-scholarships-in-Canada?page={i}', 'country': 'Canada'}
@@ -98,4 +117,5 @@ for index, item in enumerate(all_data, start=1):
     print(f"   Country: {item['Country']}")
     print(f"   University: {item['University']}")
     print(f"   Branch/Department: {item['Branch/Department']}")
+    print(f"   Supervisor: {item['Supervisor']}")
     print('-' * 50)
