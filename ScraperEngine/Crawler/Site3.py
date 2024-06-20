@@ -1,10 +1,50 @@
 import requests
 from bs4 import BeautifulSoup
+import re
+
+def fetch_supervisor_details(page_text):
+    soup = BeautifulSoup(page_text, 'html.parser')
+    text = soup.get_text()
+    
+    supervisors = set()
+    patterns = [r'Prof\. dr\. ir\.', r'Prof\. dr\.', r'Prof\.', r'Dr\.', r'Prof\. dr']
+
+    for pattern in patterns:
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            start = match.end()
+            next_part = text[start:].strip()
+            words = next_part.split()
+            
+            supervisor_name = []
+            for word in words:
+                if re.match(r'[.,;:!?]', word) or word == "at":
+                    break
+                supervisor_name.append(word)
+                if len(supervisor_name) >= 2:
+                    break
+            
+            if supervisor_name:
+                # حذف علائم نگارشی از انتهای نام
+                full_name = match.group() + ' ' + ' '.join(supervisor_name)
+                full_name = re.sub(r'[.,;:!?]+$', '', full_name)
+                # چک کردن وجود علامت . یا , در دو کلمه‌ی اسم
+                if any(punct in word for word in supervisor_name for punct in [".", ","]):
+                    continue
+                supervisors.add(full_name)
+
+    return supervisors
+
+def fetch_emails(page_text):
+    soup = BeautifulSoup(page_text, 'html.parser')
+    text = soup.get_text()
+    emails = set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text))
+    return emails
 
 def fetch_job_details(job_url):
     try:
         response = requests.get(job_url)
-        response.raise_for_status()  # بررسی وضعیت پاسخ
+        response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         job_details = soup.find('div', class_='card card-border border-primary shadow-sm mb-6 mb-md-6', id='jobDetails')
         if job_details:
@@ -19,14 +59,23 @@ def fetch_job_details(job_url):
                         title = title_col.text.strip()
                         value = value_col.text.strip()
                         if title == "Application deadline":
-                            value = value.split()[0]  # گرفتن تنها تاریخ و حذف زمان و منطقه زمانی
+                            value = value.split()[0]
                         if title == "Location":
-                            value = value.split(",")[-1].strip()  # گرفتن تنها کشور
+                            value = value.split(",")[-1].strip()
                             title = "Country"
                         if title == "Employer":
                             title = "University"
                         if title in ["University", "Country", "Application deadline"]:
                             details[title] = value
+            
+            supervisors = fetch_supervisor_details(response.text)
+            emails = fetch_emails(response.text)
+            
+            if supervisors:
+                details["Supervisors"] = list(supervisors)
+            if emails:
+                details["Emails"] = list(emails)
+
             return details
     except requests.exceptions.RequestException as e:
         print(f"Failed to retrieve job details from {job_url}: {e}")
@@ -53,9 +102,15 @@ def fetch_data_by_url(page_url, start_index):
                         for key in ["University", "Country", "Application deadline"]:
                             if key in job_details:
                                 print(f"   {key}: {job_details[key]}")
+                        if "Supervisors" in job_details:
+                            for supervisor in job_details["Supervisors"]:
+                                print(f"   Supervisor: {supervisor}")
+                        if "Emails" in job_details:
+                            for email in job_details["Emails"]:
+                                print(f"   Email: {email}")
                     print("---------------------------------------------------------------\n")
                     counter += 1
-        return counter - start_index  # برگرداندن تعداد موقعیت‌هایی که پردازش شدند
+        return counter - start_index
     else:
         print(f"Failed to retrieve the page {page_url}. Status code:", response.status_code)
         return 0
@@ -65,6 +120,6 @@ base_url = 'https://academicpositions.com/jobs/position/phd?sort=recent&page={}'
 
 # اجرای حلقه برای چند صفحه
 start_index = 1
-for j in range(1, 5):  # مثلاً برای پردازش سه صفحه
+for j in range(1, 5):
     current_url = base_url.format(j)
     start_index += fetch_data_by_url(current_url, start_index)
