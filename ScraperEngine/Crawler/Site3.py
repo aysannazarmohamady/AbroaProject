@@ -17,12 +17,19 @@ if response.status_code == 200:
 
     # بررسی هر کارت شغلی در داخل دیو مورد نظر
     job_cards = job_list.find_all('div', class_='card shadow-sm mb-4 mb-md-4 job-list-item')
+    
+    # متغیر شمارنده برای نمایش شماره هر آگهی
+    counter = 1
+
     for card in job_cards:
         job_link = card.find('a', class_='text-dark text-decoration-none hover-title-underline job-link')
         if job_link:
             job_title = job_link.find('h4')
+            full_link = 'https://academicpositions.com' + job_link['href']  # اضافه کردن قسمت ابتدایی لینک
             if job_title:
-                print("Job title:", job_title.text.strip())
-                print("Job link:", job_link['href'])
+                print(f"{counter}. Title of Position: {job_title.text.strip()}")
+                print(f"   Link: {full_link}")
+                print("---------------------------------------------------------------\n")
+                counter += 1  # افزایش شمارنده برای آیتم بعدی
 else:
     print("Failed to retrieve the page. Status code:", response.status_code)
