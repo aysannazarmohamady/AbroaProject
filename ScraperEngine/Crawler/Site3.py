@@ -25,21 +25,57 @@ def fetch_supervisor_details(page_text):
                     break
             
             if supervisor_name:
-                # حذف علائم نگارشی از انتهای نام
                 full_name = match.group() + ' ' + ' '.join(supervisor_name)
                 full_name = re.sub(r'[.,;:!?]+$', '', full_name)
-                # چک کردن وجود علامت . یا , در دو کلمه‌ی اسم
                 if any(punct in word for word in supervisor_name for punct in [".", ","]):
                     continue
                 supervisors.add(full_name)
 
     return supervisors
 
+def find_nearest_email(name, text):
+    pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
+    emails = pattern.findall(text)
+    
+    nearest_email = None
+    min_distance = float('inf')
+    
+    for email in emails:
+        distance = text.find(email) - text.find(name)
+        if 0 <= distance < min_distance:
+            min_distance = distance
+            nearest_email = email
+    
+    return nearest_email
+
 def fetch_emails(page_text):
+    pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
+    emails = pattern.findall(page_text)
+    return set(emails)  # استفاده از مجموعه برای حذف ایمیل‌های تکراری
+
+def fetch_logo_url(page_text):
     soup = BeautifulSoup(page_text, 'html.parser')
-    text = soup.get_text()
-    emails = set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text))
-    return emails
+    logo_div = soup.find('div', class_='employee-avatar-container__header')
+    if logo_div:
+        img_tag = logo_div.find('img', class_='employee-avatar')
+        if img_tag and 'src' in img_tag.attrs:
+            return img_tag['src']
+    return None
+
+def fetch_fields(page_text):
+    soup = BeautifulSoup(page_text, 'html.parser')
+    fields_div = soup.find_all('div', class_='row')
+    fields = []
+    for field_div in fields_div:
+        title_div = field_div.find('div', class_='col-12 col-md-4')
+        value_div = field_div.find('div', class_='col-auto col-md-8')
+        if title_div and value_div:
+            title = title_div.get_text(strip=True)
+            if 'Field' in title:
+                links = value_div.find_all('a', class_='text-dark')
+                for link in links:
+                    fields.append(link.get_text(strip=True))
+    return fields
 
 def fetch_job_details(job_url):
     try:
@@ -70,11 +106,23 @@ def fetch_job_details(job_url):
             
             supervisors = fetch_supervisor_details(response.text)
             emails = fetch_emails(response.text)
+            text = soup.get_text()
+            logo_url = fetch_logo_url(response.text)
+            fields = fetch_fields(response.text)
             
             if supervisors:
-                details["Supervisors"] = list(supervisors)
-            if emails:
-                details["Emails"] = list(emails)
+                details["Supervisors"] = []
+                details["Emails"] = list(emails)  # تمامی ایمیل‌ها را اضافه کنید
+                details["Supervisor Emails"] = []
+                for supervisor in supervisors:
+                    details["Supervisors"].append(supervisor)
+                    email = find_nearest_email(supervisor, text)
+                    if email and email not in details["Supervisor Emails"]:
+                        details["Supervisor Emails"].append(email)
+            if logo_url:
+                details["Logo URL"] = logo_url
+            if fields:
+                details["Fields"] = fields
 
             return details
     except requests.exceptions.RequestException as e:
@@ -99,15 +147,27 @@ def fetch_data_by_url(page_url, start_index):
                     print(f"   Link: {full_link}")
                     job_details = fetch_job_details(full_link)
                     if isinstance(job_details, dict):
+                        printed_emails = set()  # مجموعه‌ای برای نگهداری ایمیل‌های چاپ شده
                         for key in ["University", "Country", "Application deadline"]:
                             if key in job_details:
                                 print(f"   {key}: {job_details[key]}")
                         if "Supervisors" in job_details:
                             for supervisor in job_details["Supervisors"]:
                                 print(f"   Supervisor: {supervisor}")
+                        if "Supervisor Emails" in job_details:
+                            for email in job_details["Supervisor Emails"]:
+                                if email not in printed_emails:
+                                    print(f"   Supervisor Email: {email}")
+                                    printed_emails.add(email)
                         if "Emails" in job_details:
                             for email in job_details["Emails"]:
-                                print(f"   Email: {email}")
+                                if email not in printed_emails:
+                                    print(f"   Email: {email}")
+                                    printed_emails.add(email)
+                        if "Logo URL" in job_details:
+                            print(f"   Logo URL: {job_details['Logo URL']}")
+                        if "Fields" in job_details:
+                            print(f"   Fields: {', '.join(job_details['Fields'])}")
                     print("---------------------------------------------------------------\n")
                     counter += 1
         return counter - start_index
@@ -120,6 +180,6 @@ base_url = 'https://academicpositions.com/jobs/position/phd?sort=recent&page={}'
 
 # اجرای حلقه برای چند صفحه
 start_index = 1
-for j in range(1, 5):
+for j in range(1, 4):  # Example: fetching first 3 pages
     current_url = base_url.format(j)
     start_index += fetch_data_by_url(current_url, start_index)
