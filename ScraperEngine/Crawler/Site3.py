@@ -52,7 +52,7 @@ def find_nearest_email(name, text):
 def fetch_emails(page_text):
     pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
     emails = pattern.findall(page_text)
-    return set(emails)  # استفاده از مجموعه برای حذف ایمیل‌های تکراری
+    return set(emails)  # Using a set to remove duplicate emails
 
 def fetch_logo_url(page_text):
     soup = BeautifulSoup(page_text, 'html.parser')
@@ -113,7 +113,7 @@ def fetch_job_details(job_url):
             
             if supervisors:
                 details["Supervisors"] = []
-                details["Emails"] = list(emails)  # تمامی ایمیل‌ها را اضافه کنید
+                details["Emails"] = list(emails)  # Add all emails
                 details["Supervisor Emails"] = []
                 for supervisor in supervisors:
                     details["Supervisors"].append(supervisor)
@@ -152,7 +152,7 @@ def fetch_data_by_url(page_url, start_index, df):
                             "Title of Position": job_title.text.strip(),
                             "Link": full_link
                         }
-                        printed_emails = set()  # مجموعه‌ای برای نگهداری ایمیل‌های چاپ شده
+                        printed_emails = set()  # A set to keep track of printed emails
                         for key in ["University", "Country", "Application deadline"]:
                             if key in job_details:
                                 row[key] = job_details[key]
@@ -188,10 +188,10 @@ def fetch_data_by_url(page_url, start_index, df):
         print(f"Failed to retrieve the page {page_url}. Status code:", response.status_code)
         return df, 0
 
-# ابتدایی URL برای صفحات مختلف
+# Initial URL for different pages
 base_url = 'https://academicpositions.com/jobs/position/phd?sort=recent&page={}'
 
-# اجرای حلقه برای چند صفحه
+# Loop execution for multiple pages
 start_index = 1
 results_df = pd.DataFrame(columns=["Title of Position", "Link", "University", "Country", "Application deadline", "Supervisors", "Supervisor Emails", "Emails", "Logo URL", "Fields"])
 
@@ -200,7 +200,7 @@ for j in range(1, 4):  # Example: fetching first 3 pages
     results_df, num_results = fetch_data_by_url(current_url, start_index, results_df)
     start_index += num_results
 
-# ذخیره نتایج در یک فایل CSV
+# Save results to a CSV file
 results_df.to_csv('job_details.csv', index=False)
 print("Data has been saved to job_details.csv")
 
