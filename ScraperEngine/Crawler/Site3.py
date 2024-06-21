@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import re
+import pandas as pd
 
 def fetch_supervisor_details(page_text):
     soup = BeautifulSoup(page_text, 'html.parser')
@@ -129,7 +130,7 @@ def fetch_job_details(job_url):
         print(f"Failed to retrieve job details from {job_url}: {e}")
     return "Job details not found"
 
-def fetch_data_by_url(page_url, start_index):
+def fetch_data_by_url(page_url, start_index, df):
     response = requests.get(page_url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -147,39 +148,64 @@ def fetch_data_by_url(page_url, start_index):
                     print(f"   Link: {full_link}")
                     job_details = fetch_job_details(full_link)
                     if isinstance(job_details, dict):
+                        row = {
+                            "Title of Position": job_title.text.strip(),
+                            "Link": full_link
+                        }
                         printed_emails = set()  # مجموعه‌ای برای نگهداری ایمیل‌های چاپ شده
                         for key in ["University", "Country", "Application deadline"]:
                             if key in job_details:
+                                row[key] = job_details[key]
                                 print(f"   {key}: {job_details[key]}")
                         if "Supervisors" in job_details:
+                            row["Supervisors"] = ', '.join(job_details["Supervisors"])
                             for supervisor in job_details["Supervisors"]:
                                 print(f"   Supervisor: {supervisor}")
                         if "Supervisor Emails" in job_details:
+                            row["Supervisor Emails"] = ', '.join(job_details["Supervisor Emails"])
                             for email in job_details["Supervisor Emails"]:
                                 if email not in printed_emails:
                                     print(f"   Supervisor Email: {email}")
                                     printed_emails.add(email)
                         if "Emails" in job_details:
+                            row["Emails"] = ', '.join(job_details["Emails"])
                             for email in job_details["Emails"]:
                                 if email not in printed_emails:
                                     print(f"   Email: {email}")
                                     printed_emails.add(email)
                         if "Logo URL" in job_details:
+                            row["Logo URL"] = job_details["Logo URL"]
                             print(f"   Logo URL: {job_details['Logo URL']}")
                         if "Fields" in job_details:
+                            row["Fields"] = ', '.join(job_details["Fields"])
                             print(f"   Fields: {', '.join(job_details['Fields'])}")
+                        
+                        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
                     print("---------------------------------------------------------------\n")
                     counter += 1
-        return counter - start_index
+        return df, counter - start_index
     else:
         print(f"Failed to retrieve the page {page_url}. Status code:", response.status_code)
-        return 0
+        return df, 0
 
 # ابتدایی URL برای صفحات مختلف
 base_url = 'https://academicpositions.com/jobs/position/phd?sort=recent&page={}'
 
 # اجرای حلقه برای چند صفحه
 start_index = 1
+results_df = pd.DataFrame(columns=["Title of Position", "Link", "University", "Country", "Application deadline", "Supervisors", "Supervisor Emails", "Emails", "Logo URL", "Fields"])
+
 for j in range(1, 4):  # Example: fetching first 3 pages
     current_url = base_url.format(j)
-    start_index += fetch_data_by_url(current_url, start_index)
+    results_df, num_results = fetch_data_by_url(current_url, start_index, results_df)
+    start_index += num_results
+
+# ذخیره نتایج در یک فایل CSV
+results_df.to_csv('job_details.csv', index=False)
+print("Data has been saved to job_details.csv")
+
+# Load the contents of the job_details.csv file
+job_details_df = pd.read_csv('job_details.csv')
+
+# Display the contents of the DataFrame
+print(job_details_df)
