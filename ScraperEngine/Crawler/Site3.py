@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import re
+import pandas as pd
 
 def fetch_supervisor_details(page_text):
     soup = BeautifulSoup(page_text, 'html.parser')
@@ -51,7 +52,7 @@ def find_nearest_email(name, text):
 def fetch_emails(page_text):
     pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
     emails = pattern.findall(page_text)
-    return set(emails)  # استفاده از مجموعه برای حذف ایمیل‌های تکراری
+    return set(emails)  # Using set to remove duplicate emails
 
 def fetch_logo_url(page_text):
     soup = BeautifulSoup(page_text, 'html.parser')
@@ -112,7 +113,7 @@ def fetch_job_details(job_url):
 
             if supervisors:
                 details["Supervisors"] = []
-                details["Emails"] = list(emails)  # تمامی ایمیل‌ها را اضافه کنید
+                details["Emails"] = list(emails)  # Add all emails
                 details["Supervisor Emails"] = []
                 for supervisor in supervisors:
                     details["Supervisors"].append(supervisor)
@@ -129,7 +130,7 @@ def fetch_job_details(job_url):
         print(f"Failed to retrieve job details from {job_url}: {e}")
     return "Job details not found"
 
-def fetch_data_by_url(page_url, start_index):
+def fetch_data_by_url(page_url, start_index, df):
     response = requests.get(page_url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -143,43 +144,31 @@ def fetch_data_by_url(page_url, start_index):
                 job_title = job_link.find('h4')
                 full_link = 'https://academicpositions.com' + job_link['href']
                 if job_title:
-                    print(f"{counter}. Title of Position: {job_title.text.strip()}")
-                    print(f"   Link: {full_link}")
                     job_details = fetch_job_details(full_link)
                     if isinstance(job_details, dict):
-                        printed_emails = set()  # مجموعه‌ای برای نگهداری ایمیل‌های چاپ شده
-                        for key in ["University", "Country", "Application deadline"]:
-                            if key in job_details:
-                                print(f"   {key}: {job_details[key]}")
-                        if "Supervisors" in job_details:
-                            for supervisor in job_details["Supervisors"]:
-                                print(f"   Supervisor: {supervisor}")
-                        if "Supervisor Emails" in job_details:
-                            for email in job_details["Supervisor Emails"]:
-                                if email not in printed_emails:
-                                    print(f"   Supervisor Email: {email}")
-                                    printed_emails.add(email)
-                        if "Emails" in job_details:
-                            for email in job_details["Emails"]:
-                                if email not in printed_emails:
-                                    print(f"   Email: {email}")
-                                    printed_emails.add(email)
-                        if "Logo URL" in job_details:
-                            print(f"   Logo URL: {job_details['Logo URL']}")
-                        if "Fields" in job_details:
-                            print(f"   Fields: {', '.join(job_details['Fields'])}")
-                    print("---------------------------------------------------------------\n")
-                    counter += 1
-        return counter - start_index
+                        job_details["Title"] = job_title.text.strip()
+                        job_details["Link"] = full_link
+                        df = pd.concat([df, pd.DataFrame([job_details])], ignore_index=True)
+                        counter += 1
+        return counter - start_index, df
     else:
         print(f"Failed to retrieve the page {page_url}. Status code:", response.status_code)
-        return 0
+        return 0, df
 
-# ابتدایی URL برای صفحات مختلف
+# Base URL for different pages
 base_url = 'https://academicpositions.com/jobs/position/phd?sort=recent&page={}'
 
-# اجرای حلقه برای چند صفحه
+# Loop to fetch multiple pages
 start_index = 1
-for j in range(1, 4):  # Example: fetching first 3 pages
+df = pd.DataFrame()
+
+for j in range(1, 6):  # Example: fetching first 3 pages
     current_url = base_url.format(j)
-    start_index += fetch_data_by_url(current_url, start_index)
+    new_entries, df = fetch_data_by_url(current_url, start_index, df)
+    start_index += new_entries
+
+# Print the dataframe
+print(df)
+
+# Save the dataframe to a CSV file
+df.to_csv('website3.csv', index=False)
