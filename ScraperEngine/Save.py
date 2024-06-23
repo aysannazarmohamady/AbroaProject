@@ -1,23 +1,14 @@
 import pandas as pd
 
-# Define the column names as a list
-columns = [
-    "Title of Position",
-    "University",
-    "Country",
-    "Supervisor",
-    "Email of Supervisor",
-    "LinkedIn of Supervisor",
-    "More Contacts",
-    "Deadline",
-    "About the position"
-]
+# Load the CSV files
+df1 = pd.read_csv('site1.csv')
+df2 = pd.read_csv('site2.csv')
+df3 = pd.read_csv('site3.csv')
 
-# Create an empty DataFrame with the specified columns
-Save = pd.DataFrame(columns=columns)
+# Concatenate the DataFrames
+df_combined = pd.concat([df1, df2, df3], ignore_index=True)
 
-# Print the empty DataFrame
-print(Save)
+# Save the combined DataFrame to a new CSV file
+df_combined.to_csv('combined_sites.csv', index=False)
 
-# Save the DataFrame to a CSV file
-Save.to_csv('job_openings.csv', index=False)
+print("Combined CSV file has been created successfully.")
