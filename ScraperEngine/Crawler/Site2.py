@@ -109,4 +109,4 @@ df = pd.DataFrame(all_data)
 print(df)
 
 # Optionally, save the DataFrame to a CSV file
-df.to_csv('site2.csv', index=False)
+df.to_csv('website2.csv', index=False)
