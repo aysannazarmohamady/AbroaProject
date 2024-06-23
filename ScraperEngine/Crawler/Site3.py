@@ -1,112 +1,185 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from googlesearch import search
-import pandas as pd
 
-def fetch_data_by_url(url, start_index, country):
-    paginated_url = url.format(i=start_index)
-    response = requests.get(paginated_url)
-    response.raise_for_status()
+def fetch_supervisor_details(page_text):
+    soup = BeautifulSoup(page_text, 'html.parser')
+    text = soup.get_text()
 
-    soup = BeautifulSoup(response.text, 'html.parser')
-    li_elements = soup.find_all('li')
-    results = []
+    supervisors = set()
+    patterns = [r'Prof\. dr\. ir\.', r'Prof\. dr\.', r'Prof\.', r'Dr\.', r'Prof\. dr']
 
-    for li in li_elements:
-        h4_tag = li.find('h4')
-        if h4_tag:
-            a_tag = h4_tag.find('a')
-            if a_tag:
-                title = a_tag.get_text(strip=True)
-                if 'PhD' in title:
-                    link = 'http://scholarshipdb.net' + a_tag['href']
-                    result = process_phd_listing(a_tag, link, country)
-                    results.append(result)
+    for pattern in patterns:
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            start = match.end()
+            next_part = text[start:].strip()
+            words = next_part.split()
 
-    return results
+            supervisor_name = []
+            for word in words:
+                if re.match(r'[.,;:!?]', word) or word == "at":
+                    break
+                supervisor_name.append(word)
+                if len(supervisor_name) >= 2:
+                    break
 
-def process_phd_listing(a_tag, link, country):
-    university_name = extract_university_name_from_link(a_tag) or fetch_university_name_from_page(link)
-    branch_department = fetch_branch_department_from_page(link)
-    supervisor_name = fetch_supervisor_from_page(link)
-    
-    # Construct Google search query
-    google_search_link = None
-    if supervisor_name != "Unknown Supervisor" and university_name != "Unknown University":
-        search_query = f"{supervisor_name} {university_name}"
-        google_search_link = perform_google_search(search_query)
+            if supervisor_name:
+                full_name = match.group() + ' ' + ' '.join(supervisor_name)
+                full_name = re.sub(r'[.,;:!?]+$', '', full_name)
+                if any(punct in word for word in supervisor_name for punct in [".", ","]):
+                    continue
+                supervisors.add(full_name)
 
-    return {
-        'Title': a_tag.get_text(strip=True),
-        'Link': link,
-        'Country': country,
-        'University': university_name,
-        'Branch/Department': branch_department,
-        'Supervisor': supervisor_name,
-        'Google Search Link': google_search_link,
-    }
+    return supervisors
 
-def extract_university_name_from_link(a_tag):
-    university_link = a_tag.get('href')
-    if university_link and 'scholarships-at' in university_link:
-        return a_tag.text.strip()
+def find_nearest_email(name, text):
+    pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
+    emails = pattern.findall(text)
+
+    nearest_email = None
+    min_distance = float('inf')
+
+    for email in emails:
+        distance = text.find(email) - text.find(name)
+        if 0 <= distance < min_distance:
+            min_distance = distance
+            nearest_email = email
+
+    return nearest_email
+
+def fetch_emails(page_text):
+    pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
+    emails = pattern.findall(page_text)
+    return set(emails)  # استفاده از مجموعه برای حذف ایمیل‌های تکراری
+
+def fetch_logo_url(page_text):
+    soup = BeautifulSoup(page_text, 'html.parser')
+    logo_div = soup.find('div', class_='employee-avatar-container__header')
+    if logo_div:
+        img_tag = logo_div.find('img', class_='employee-avatar')
+        if img_tag and 'src' in img_tag.attrs:
+            return img_tag['src']
     return None
 
-def fetch_university_name_from_page(link):
-    response = requests.get(link)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'html.parser')
-    return extract_university_from_text(soup.get_text())
+def fetch_fields(page_text):
+    soup = BeautifulSoup(page_text, 'html.parser')
+    fields_div = soup.find_all('div', class_='row')
+    fields = []
+    for field_div in fields_div:
+        title_div = field_div.find('div', class_='col-12 col-md-4')
+        value_div = field_div.find('div', class_='col-auto col-md-8')
+        if title_div and value_div:
+            title = title_div.get_text(strip=True)
+            if 'Field' in title:
+                links = value_div.find_all('a', class_='text-dark')
+                for link in links:
+                    fields.append(link.get_text(strip=True))
+    return fields
 
-def extract_university_from_text(text):
-    match = re.search(r'University of (\w+)', text)
-    return f"University of {match.group(1)}" if match else "Unknown University"
+def fetch_job_details(job_url):
+    try:
+        response = requests.get(job_url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        job_details = soup.find('div', class_='card card-border border-primary shadow-sm mb-6 mb-md-6', id='jobDetails')
+        if job_details:
+            details = {}
+            body = job_details.find('div', class_='card-body')
+            if body:
+                rows = body.find_all('div', class_='row mb-3')
+                for row in rows:
+                    title_col = row.find('div', class_='col-12 col-md-4')
+                    value_col = row.find('div', class_='col-auto col-md-8')
+                    if title_col and value_col:
+                        title = title_col.text.strip()
+                        value = value_col.text.strip()
+                        if title == "Application deadline":
+                            value = value.split()[0]
+                        if title == "Location":
+                            value = value.split(",")[-1].strip()
+                            title = "Country"
+                        if title == "Employer":
+                            title = "University"
+                        if title in ["University", "Country", "Application deadline"]:
+                            details[title] = value
 
-def fetch_branch_department_from_page(link):
-    response = requests.get(link)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'html.parser')
-    return extract_branch_department_from_text(soup.get_text())
+            supervisors = fetch_supervisor_details(response.text)
+            emails = fetch_emails(response.text)
+            text = soup.get_text()
+            logo_url = fetch_logo_url(response.text)
+            fields = fetch_fields(response.text)
 
-def extract_branch_department_from_text(text):
-    match = re.search(r'(Department of [\w\s]+|School of [\w\s]+|Faculty of [\w\s]+|Institute of [\w\s]+)', text)
-    return match.group(1).strip() if match else "Unknown Branch/Department"
+            if supervisors:
+                details["Supervisors"] = []
+                details["Emails"] = list(emails)  # تمامی ایمیل‌ها را اضافه کنید
+                details["Supervisor Emails"] = []
+                for supervisor in supervisors:
+                    details["Supervisors"].append(supervisor)
+                    email = find_nearest_email(supervisor, text)
+                    if email and email not in details["Supervisor Emails"]:
+                        details["Supervisor Emails"].append(email)
+            if logo_url:
+                details["Logo URL"] = logo_url
+            if fields:
+                details["Fields"] = fields
 
-def fetch_supervisor_from_page(link):
-    response = requests.get(link)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'html.parser')
-    return extract_supervisor_from_text(soup.get_text())
+            return details
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to retrieve job details from {job_url}: {e}")
+    return "Job details not found"
 
-def extract_supervisor_from_text(text):
-    match = re.search(r'(Supervisor[:\s]*[\w\s]+|Prof\. [\w\s]+|Dr\. [\w\s]+)', text, re.IGNORECASE)
-    return match.group(0).strip() if match else "Unknown Supervisor"
+def fetch_data_by_url(page_url, start_index):
+    response = requests.get(page_url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        job_list = soup.find('div', id='list-jobs')
+        job_cards = job_list.find_all('div', class_='card shadow-sm mb-4 mb-md-4 job-list-item')
+        counter = start_index
 
-def perform_google_search(query):
-    search_results = search(query)
-    for result in search_results:
-        if '.edu' in result:
-            return result
-    return "No .edu link found"
+        for card in job_cards:
+            job_link = card.find('a', class_='text-dark text-decoration-none hover-title-underline job-link')
+            if job_link:
+                job_title = job_link.find('h4')
+                full_link = 'https://academicpositions.com' + job_link['href']
+                if job_title:
+                    print(f"{counter}. Title of Position: {job_title.text.strip()}")
+                    print(f"   Link: {full_link}")
+                    job_details = fetch_job_details(full_link)
+                    if isinstance(job_details, dict):
+                        printed_emails = set()  # مجموعه‌ای برای نگهداری ایمیل‌های چاپ شده
+                        for key in ["University", "Country", "Application deadline"]:
+                            if key in job_details:
+                                print(f"   {key}: {job_details[key]}")
+                        if "Supervisors" in job_details:
+                            for supervisor in job_details["Supervisors"]:
+                                print(f"   Supervisor: {supervisor}")
+                        if "Supervisor Emails" in job_details:
+                            for email in job_details["Supervisor Emails"]:
+                                if email not in printed_emails:
+                                    print(f"   Supervisor Email: {email}")
+                                    printed_emails.add(email)
+                        if "Emails" in job_details:
+                            for email in job_details["Emails"]:
+                                if email not in printed_emails:
+                                    print(f"   Email: {email}")
+                                    printed_emails.add(email)
+                        if "Logo URL" in job_details:
+                            print(f"   Logo URL: {job_details['Logo URL']}")
+                        if "Fields" in job_details:
+                            print(f"   Fields: {', '.join(job_details['Fields'])}")
+                    print("---------------------------------------------------------------\n")
+                    counter += 1
+        return counter - start_index
+    else:
+        print(f"Failed to retrieve the page {page_url}. Status code:", response.status_code)
+        return 0
 
-# URLs and data gathering
-urls = [
-    {'url': 'http://scholarshipdb.net/PhD-scholarships-in-United-States?page={i}', 'country': 'United States'},
-    {'url': 'http://scholarshipdb.net/PhD-scholarships-in-Canada?page={i}', 'country': 'Canada'}
-]
+# ابتدایی URL برای صفحات مختلف
+base_url = 'https://academicpositions.com/jobs/position/phd?sort=recent&page={}'
 
-all_data = []
-for url_info in urls:
-    for page_num in range(1, 5):
-        data = fetch_data_by_url(url_info['url'], page_num, url_info['country'])
-        all_data.extend(data)
-
-# Create a DataFrame
-df = pd.DataFrame(all_data)
-
-# Print the DataFrame
-print(df)
-
-# Save the DataFrame to a CSV file with the new name
-df.to_csv('site3.csv', index=False)
+# اجرای حلقه برای چند صفحه
+start_index = 1
+for j in range(1, 4):  # Example: fetching first 3 pages
+    current_url = base_url.format(j)
+    start_index += fetch_data_by_url(current_url, start_index)
