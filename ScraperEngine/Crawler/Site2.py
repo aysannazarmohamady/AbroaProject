@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from googlesearch import search
+import pandas as pd
 
 def fetch_data_by_url(url, start_index, country):
     paginated_url = url.format(i=start_index)
@@ -101,12 +102,11 @@ for url_info in urls:
         data = fetch_data_by_url(url_info['url'], page_num, url_info['country'])
         all_data.extend(data)
 
-for index, item in enumerate(all_data, start=1):
-    print(f"{index}. Title of Position: {item['Title']}")
-    print(f"   Link: {item['Link']}")
-    print(f"   Country: {item['Country']}")
-    print(f"   University: {item['University']}")
-    print(f"   Branch/Department: {item['Branch/Department']}")
-    print(f"   Supervisor: {item['Supervisor']}")
-    print(f"   Supervisor academic page: {item['Google Search Link']}")
-    print('-' * 50)
+# Create a DataFrame
+df = pd.DataFrame(all_data)
+
+# Print the DataFrame
+print(df)
+
+# Optionally, save the DataFrame to a CSV file
+df.to_csv('site2.csv', index=False)
