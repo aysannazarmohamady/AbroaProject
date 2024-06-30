@@ -1,5 +1,5 @@
 <?php
-$token = "";
+$token = "7011288395:AAGw0LntfB4s3ItqaT_buL4eIusRF2TZUi8";
 $apiUrl = "https://api.telegram.org/bot$token/";
 $channelUsername = "@JetApply";
 $dataFile = "user_data.json";
@@ -10,19 +10,22 @@ $updateArray = json_decode($update, true);
 if (isset($updateArray['message'])) {
     $chatId = $updateArray['message']['chat']['id'];
     $message = $updateArray['message']['text'];
+    $userId = $updateArray['message']['from']['id'];
 
     if ($message == "/start") {
         sendMainMenu($chatId);
-    } elseif ($message == "Search Opportunities") {
+    } elseif ($message == "🔍 Search Opportunities") {
         sendMessage($chatId, "You selected: Search Opportunities");
-    } elseif ($message == "User Profile") {
-        requestUserProfile($chatId);
-    } elseif ($message == "AI Assistant") {
+    } elseif ($message == "👤 User Profile") {
+        requestUserProfile($chatId, $userId);
+    } elseif ($message == "🤖 AI Assistant") {
         sendMessage($chatId, "You selected: AI Assistant");
-    } elseif ($message == "Help and Support") {
+    } elseif ($message == "❓ Help and Support") {
         sendMessage($chatId, "You selected: Help and Support");
+    } elseif ($message == "📋 View/Edit Profile") {
+        viewEditProfile($chatId, $userId);
     } else {
-        handleProfileData($chatId, $message);
+        handleProfileData($chatId, $message, $userId);
     }
 }
 
@@ -38,60 +41,102 @@ function sendMessage($chatId, $message, $keyboard = null) {
 function sendMainMenu($chatId) {
     $keyboard = [
         "keyboard" => [
-            [["text" => "Search Opportunities"], ["text" => "User Profile"]],
-            [["text" => "AI Assistant"], ["text" => "Help and Support"]]
+            [["text" => "🔍 Search Opportunities"], ["text" => "👤 User Profile"]],
+            [["text" => "🤖 AI Assistant"], ["text" => "❓ Help and Support"]],
+            [["text" => "📋 View/Edit Profile"]]
         ],
         "resize_keyboard" => true
     ];
     sendMessage($chatId, "Please choose an option from the menu:", $keyboard);
 }
 
-function requestUserProfile($chatId) {
+function requestUserProfile($chatId, $userId) {
     sendMessage($chatId, "Please enter your email (optional):");
     $data = loadData();
-    $data[$chatId]['step'] = 1;
+    $data[$userId]['step'] = 1;
     saveData($data);
 }
 
-function handleProfileData($chatId, $message) {
+function handleProfileData($chatId, $message, $userId) {
     $data = loadData();
-    if (!isset($data[$chatId])) {
+    if (!isset($data[$userId])) {
         return;
     }
-    switch ($data[$chatId]['step']) {
+    switch ($data[$userId]['step']) {
         case 1:
-            $data[$chatId]['email'] = $message;
-            $data[$chatId]['step'] = 2;
-            sendMessage($chatId, "Please enter your preferred field of study:");
+            $data[$userId]['email'] = $message;
+            $data[$userId]['step'] = 2;
+            sendFieldOfStudyKeyboard($chatId);
             break;
         case 2:
-            $data[$chatId]['field'] = $message;
-            $data[$chatId]['step'] = 3;
+            if ($message == "🌍 Other") {
+                sendMessage($chatId, "Please enter your preferred field of study:");
+                $data[$userId]['step'] = 2.1;
+            } else {
+                $data[$userId]['field'] = $message;
+                $data[$userId]['step'] = 3;
+                sendCountryKeyboard($chatId);
+            }
+            break;
+        case 2.1:
+            $data[$userId]['field'] = $message;
+            $data[$userId]['step'] = 3;
             sendCountryKeyboard($chatId);
             break;
         case 3:
             if ($message == "🌍 Other") {
                 sendMessage($chatId, "Please enter your favorite country manually:");
-                $data[$chatId]['step'] = 3.1;
+                $data[$userId]['step'] = 3.1;
             } else {
-                $data[$chatId]['country'] = $message;
-                $data[$chatId]['step'] = 4;
-                sendEducationLevelKeyboard($chatId);
+                $data[$userId]['country'] = $message;
+                $data[$userId]['step'] = 4;
+                sendCVUploadOption($chatId);
             }
             break;
         case 3.1:
-            $data[$chatId]['country'] = $message;
-            $data[$chatId]['step'] = 4;
-            sendEducationLevelKeyboard($chatId);
+            $data[$userId]['country'] = $message;
+            $data[$userId]['step'] = 4;
+            sendCVUploadOption($chatId);
             break;
         case 4:
-            $data[$chatId]['education_level'] = $message;
-            unset($data[$chatId]['step']);
-            saveData($data);
-            sendMessage($chatId, "Your profile has been updated.");
+            if ($message == "Yes") {
+                sendMessage($chatId, "Please upload your CV file.");
+                $data[$userId]['step'] = 5;
+            } elseif ($message == "No") {
+                unset($data[$userId]['step']);
+                saveData($data);
+                sendMessage($chatId, "Your profile has been updated.");
+                sendMainMenu($chatId);
+            }
+            break;
+        case 5:
+            if (isset($updateArray['message']['document'])) {
+                $data[$userId]['cv_file_id'] = $updateArray['message']['document']['file_id'];
+                unset($data[$userId]['step']);
+                saveData($data);
+                sendMessage($chatId, "Your CV has been uploaded and your profile has been updated.");
+                sendMainMenu($chatId);
+            } else {
+                sendMessage($chatId, "Please upload a file for your CV.");
+            }
             break;
     }
     saveData($data);
+}
+
+function sendFieldOfStudyKeyboard($chatId) {
+    $keyboard = [
+        "keyboard" => [
+            [["text" => "🧬 Biology"], ["text" => "💻 Computer Science"]],
+            [["text" => "🔬 Physics"], ["text" => "🧪 Chemistry"]],
+            [["text" => "📊 Mathematics"], ["text" => "📚 Literature"]],
+            [["text" => "🎨 Arts"], ["text" => "🏛️ History"]],
+            [["text" => "💼 Business"], ["text" => "⚖️ Law"]],
+            [["text" => "🌍 Other"]]
+        ],
+        "resize_keyboard" => true
+    ];
+    sendMessage($chatId, "Please choose your preferred field of study:", $keyboard);
 }
 
 function sendCountryKeyboard($chatId) {
@@ -107,15 +152,30 @@ function sendCountryKeyboard($chatId) {
     sendMessage($chatId, "Please choose your preferred country:", $keyboard);
 }
 
-function sendEducationLevelKeyboard($chatId) {
+function sendCVUploadOption($chatId) {
     $keyboard = [
         "keyboard" => [
-            [["text" => "PhD"], ["text" => "Master's"]],
-            [["text" => "Post-Doc"]]
+            [["text" => "Yes"], ["text" => "No"]]
         ],
         "resize_keyboard" => true
     ];
-    sendMessage($chatId, "Please choose your preferred education level:", $keyboard);
+    sendMessage($chatId, "Would you like to upload your CV?", $keyboard);
+}
+
+function viewEditProfile($chatId, $userId) {
+    $data = loadData();
+    if (isset($data[$userId])) {
+        $profile = $data[$userId];
+        $message = "Your Profile:\n\n";
+        $message .= "Email: " . ($profile['email'] ?? "Not set") . "\n";
+        $message .= "Field of Study: " . ($profile['field'] ?? "Not set") . "\n";
+        $message .= "Preferred Country: " . ($profile['country'] ?? "Not set") . "\n";
+        $message .= "CV: " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
+        $message .= "To edit your profile, select 'User Profile' from the main menu.";
+        sendMessage($chatId, $message);
+    } else {
+        sendMessage($chatId, "You haven't created a profile yet. Select 'User Profile' from the main menu to create one.");
+    }
 }
 
 function loadData() {
@@ -133,4 +193,3 @@ function saveData($data) {
     file_put_contents($dataFile, $json);
 }
 ?>
-
