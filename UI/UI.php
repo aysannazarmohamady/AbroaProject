@@ -1,5 +1,5 @@
 <?php
-$token = "";
+$token = "7011288395:AAGw0LntfB4s3ItqaT_buL4eIusRF2TZUi8";
 $apiUrl = "https://api.telegram.org/bot$token/";
 $channelUsername = "@JetApply";
 $dataFile = "user_data.json";
@@ -9,7 +9,7 @@ $updateArray = json_decode($update, true);
 
 if (isset($updateArray['message'])) {
     $chatId = $updateArray['message']['chat']['id'];
-    $message = $updateArray['message']['text'] ?? '';
+    $message = $updateArray['message']['text'];
     $userId = $updateArray['message']['from']['id'];
 
     switch ($message) {
@@ -43,7 +43,7 @@ if (isset($updateArray['message'])) {
             handlePromptingOption($chatId, $message);
             break;
         default:
-            handleProfileData($chatId, $message, $userId, $updateArray);
+            handleProfileData($chatId, $message, $userId);
             break;
     }
 }
@@ -95,11 +95,42 @@ function sendPromptingMenu($chatId) {
 function handlePromptingOption($chatId, $option) {
     switch ($option) {
         case "📝 Resume Writing":
-            $message = "I have a job posting for the role of [Job Title] at [Company Name]. Please review the key requirements and responsibilities listed in the job description below, and then rewrite/update my existing resume to highlight the most relevant skills, experiences, and accomplishments that align with what the employer is looking for in an ideal candidate.\n\n[Paste the full job description text here]\n\nHere is my current resume:\n[Paste your existing resume content here]\n\nWhen rewriting my resume, please:\n- Update the resume summary/objective to speak directly to this role\n- Reorder and tweak the experience/skills sections to prioritize the most relevant qualifications \n- Use keyword phrases pulled from the job description where applicable\n- Quantify achievements with metrics/numbers where possible\n- Keep the resume concise, focusing on only the most pertinent details for this role\n\nThe goal is to create a tailored version of my resume that clearly showcases why I'm a strong fit for this particular position based on the stated requirements. Please maintain a professional tone throughout.";
+            $message = "I have a job posting for the role of [Job Title] at [Company Name]. Please review the key requirements and responsibilities listed in the job description below, and then rewrite/update my existing resume to highlight the most relevant skills, experiences, and accomplishments that align with what the employer is looking for in an ideal candidate.
+
+[Paste the full job description text here]
+
+Here is my current resume:
+[Paste your existing resume content here]
+
+When rewriting my resume, please:
+- Update the resume summary/objective to speak directly to this role
+- Reorder and tweak the experience/skills sections to prioritize the most relevant qualifications 
+- Use keyword phrases pulled from the job description where applicable
+- Quantify achievements with metrics/numbers where possible
+- Keep the resume concise, focusing on only the most pertinent details for this role
+
+The goal is to create a tailored version of my resume that clearly showcases why I'm a strong fit for this particular position based on the stated requirements. Please maintain a professional tone throughout.";
             sendMessage($chatId, $message);
             break;
         case "✉️ Cover Letter Writing":
-            $message = "Please write a cover letter for an academic position using the following information:\n\nApplicant's Resume:\n[Insert full resume of the applicant here]\nAcademic Position Description:\n[Insert full description of the academic position here]\n\nPlease write a compelling cover letter that:\n\n- Addresses the hiring committee or department chair\n- Expresses enthusiasm for the position\n- Highlights how the applicant's qualifications match the job requirements\n- Demonstrates knowledge of and interest in the institution\n- Explains how the applicant's research and teaching experience align with the position\n- Concludes with a strong statement of interest and availability for an interview\n\nThe cover letter should be professional, concise, and tailored to the specific position and institution. It should be approximately 1 page in length (3-4 paragraphs).\n\nThe system should:\n\n- Extract key information from the resume, including educational background, research experience, publications, teaching experience, awards, and technical skills\n- Identify key requirements and preferences from the position description\n- Extract information about the institution from the position description\n- Use this information to write a personalized and relevant cover letter.";
+            $message = "Please write a cover letter for an academic position using the following information:
+Applicant's Resume:
+[Insert full resume of the applicant here]
+Academic Position Description:
+[Insert full description of the academic position here]
+Please write a compelling cover letter that:
+Addresses the hiring committee or department chair
+Expresses enthusiasm for the position
+Highlights how the applicant's qualifications match the job requirements
+Demonstrates knowledge of and interest in the institution
+Explains how the applicant's research and teaching experience align with the position
+Concludes with a strong statement of interest and availability for an interview
+The cover letter should be professional, concise, and tailored to the specific position and institution. It should be approximately 1 page in length (3-4 paragraphs).
+The system should:
+Extract key information from the resume, including educational background, research experience, publications, teaching experience, awards, and technical skills
+Identify key requirements and preferences from the position description
+Extract information about the institution from the position description
+Use this information to write a personalized and relevant cover letter";
             sendMessage($chatId, $message);
             break;
         case "📧 Email Writing":
@@ -115,7 +146,7 @@ function requestUserProfile($chatId, $userId) {
     saveData($data);
 }
 
-function handleProfileData($chatId, $message, $userId, $updateArray) {
+function handleProfileData($chatId, $message, $userId) {
     $data = loadData();
     if (!isset($data[$userId]) || !isset($data[$userId]['step'])) {
         return;
@@ -199,18 +230,16 @@ function sendFieldOfStudyKeyboard($chatId) {
         ],
         "resize_keyboard" => true
     ];
-    sendMessage($chatId, "Please choose your field of study:", $keyboard);
+    sendMessage($chatId, "Please choose your preferred field of study:", $keyboard);
 }
 
 function sendCountryKeyboard($chatId) {
     $keyboard = [
         "keyboard" => [
-            [["text" => "🇺🇸 USA"], ["text" => "🇬🇧 UK"]],
-            [["text" => "🇨🇦 Canada"], ["text" => "🇦🇺 Australia"]],
-            [["text" => "🇩🇪 Germany"], ["text" => "🇫🇷 France"]],
-            [["text" => "🇯🇵 Japan"], ["text" => "🇨🇳 China"]],
-            [["text" => "🇮🇳 India"], ["text" => "🇧🇷 Brazil"]],
-            [["text" => "🌍 Other"]]
+            [["text" => "🇺🇸 USA"], ["text" => "🇨🇦 Canada"]],
+            [["text" => "🇬🇧 UK"], ["text" => "🇦🇺 Australia"]],
+            [["text" => "🇫🇮 Finland"], ["text" => "🇳🇱 Netherlands"]],
+            [["text" => "🇦🇹 Austria"], ["text" => "🌍 Other"]]
         ],
         "resize_keyboard" => true
     ];
@@ -220,12 +249,12 @@ function sendCountryKeyboard($chatId) {
 function sendEducationLevelKeyboard($chatId) {
     $keyboard = [
         "keyboard" => [
-            [["text" => "Bachelor's"], ["text" => "Master's"]],
-            [["text" => "PhD"], ["text" => "Postdoc"]]
+            [["text" => "🎓 PhD"], ["text" => "📚 Master's"]],
+            [["text" => "🔬 Post-Doc"]]
         ],
         "resize_keyboard" => true
     ];
-    sendMessage($chatId, "Please choose your highest level of education:", $keyboard);
+    sendMessage($chatId, "Please choose your preferred education level:", $keyboard);
 }
 
 function sendCVUploadOption($chatId) {
@@ -238,15 +267,35 @@ function sendCVUploadOption($chatId) {
     sendMessage($chatId, "Would you like to upload your CV?", $keyboard);
 }
 
+function viewEditProfile($chatId, $userId) {
+    $data = loadData();
+    if (isset($data[$userId])) {
+        $profile = $data[$userId];
+        $message = "Your Profile:\n\n";
+        $message .= "Email: " . ($profile['email'] ?? "Not set") . "\n";
+        $message .= "Field of Study: " . ($profile['field'] ?? "Not set") . "\n";
+        $message .= "Preferred Country: " . ($profile['country'] ?? "Not set") . "\n";
+        $message .= "Education Level: " . ($profile['education_level'] ?? "Not set") . "\n";
+        $message .= "CV: " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
+        $message .= "To edit your profile, select 'User Profile' from the main menu.";
+        sendMessage($chatId, $message);
+    } else {
+        sendMessage($chatId, "You haven't created a profile yet. Select 'User Profile' from the main menu to create one.");
+    }
+}
+
 function loadData() {
     global $dataFile;
-    if (file_exists($dataFile)) {
-        return json_decode(file_get_contents($dataFile), true);
+    if (!file_exists($dataFile)) {
+        return [];
     }
-    return [];
+    $json = file_get_contents($dataFile);
+    return json_decode($json, true);
 }
 
 function saveData($data) {
     global $dataFile;
-    file_put_contents($dataFile, json_encode($data));
+    $json = json_encode($data);
+    file_put_contents($dataFile, $json);
 }
+?>
