@@ -23,7 +23,13 @@ if (isset($updateArray['message'])) {
             sendMainMenu($chatId);
             break;
         case "🔍 Search Opportunities":
-            sendMessage($chatId, "You selected: Search Opportunities");
+            sendSearchOpportunitiesMenu($chatId);
+            break;
+        case "📊 Display Based on Your Profile":
+            searchOpportunities($chatId, $userId);
+            break;
+        case "🔎 New Search":
+            sendNewSearchMenu($chatId);
             break;
         case "👤 User Profile":
             requestUserProfile($chatId, $userId);
@@ -51,6 +57,15 @@ if (isset($updateArray['message'])) {
         case "🧑‍🏫 Search Supervisors":
             handleSearchSupervisors($chatId);
             break;
+        case "📅 Latest opportunities":
+            handleLatestOpportunities($chatId);
+            break;
+        case "🌍 Global Search":
+            handleGlobalSearch($chatId);
+            break;
+        case "🔬 Advanced Search":
+            handleAdvancedSearch($chatId);
+            break;
         default:
             handleProfileData($chatId, $message, $userId);
             break;
@@ -76,6 +91,44 @@ function sendMainMenu($chatId) {
         "resize_keyboard" => true
     ];
     sendMessage($chatId, "Please choose an option from the main menu:", $keyboard);
+}
+
+function sendSearchOpportunitiesMenu($chatId) {
+    $keyboard = [
+        "keyboard" => [
+            [["text" => "📊 Display Based on Your Profile"], ["text" => "🔎 New Search"]],
+            [["text" => "🔙 Back to Main Menu"]]
+        ],
+        "resize_keyboard" => true
+    ];
+    sendMessage($chatId, "Please choose an option for searching opportunities:", $keyboard);
+}
+
+function sendNewSearchMenu($chatId) {
+    $keyboard = [
+        "keyboard" => [
+            [["text" => "📅 Latest opportunities"], ["text" => "🌍 Global Search"]],
+            [["text" => "🔬 Advanced Search"]],
+            [["text" => "🔙 Back to Main Menu"]]
+        ],
+        "resize_keyboard" => true
+    ];
+    sendMessage($chatId, "Please choose a search option:", $keyboard);
+}
+
+function handleLatestOpportunities($chatId) {
+    sendMessage($chatId, "Searching for the latest opportunities...");
+    // Implement the logic to fetch and display the latest opportunities
+}
+
+function handleGlobalSearch($chatId) {
+    sendMessage($chatId, "Please enter your global search criteria:");
+    // Implement the logic for global search
+}
+
+function handleAdvancedSearch($chatId) {
+    sendMessage($chatId, "Advanced Search: Please specify your detailed search criteria.");
+    // Implement the logic for advanced search
 }
 
 function sendAIAssistantMenu($chatId) {
@@ -383,5 +436,77 @@ function parseSearchInfo($message) {
 }
 
 function searchSupervisors($info) {
+    // Implement your search logic here
+    // This is a placeholder function
+    return "Search results for supervisors:\nField: " . ($info['field'] ?? 'Not specified') . "\nUniversity: " . ($info['university'] ?? 'Not specified') . "\nTopic: " . ($info['topic'] ?? 'Not specified');
+}
+
+function searchOpportunities($chatId, $userId) {
+    $userData = loadData();
+    if (!isset($userData[$userId])) {
+        sendMessage($chatId, "Please complete your profile first by selecting 'User Profile' from the main menu.");
+        return;
+    }
+
+    $userProfile = $userData[$userId];
+    $title = clearDate($userProfile['field'] ?? '');
+    $country = clearDate($userProfile['country'] ?? '');
+    $url = 'https://jet.aysan.dev/api.php';
+    $data = array(
+        'action' => 'search',
+        'keyword' => trim($title),
+        'country' => trim($country)
+    );
     
+    $options = array(
+        'http' => array(
+            'header'  => "Content-type: application/json\r\n",
+            'method'  => 'POST',
+            'content' => json_encode($data)
+        )
+    );
+
+    $context = stream_context_create($options);
+    $result = file_get_contents($url, false, $context);
+
+    if ($result === FALSE) {
+        sendMessage($chatId, "An error occurred while searching for opportunities. Please try again later.");
+    } else {
+        $response = json_decode($result, true);
+        sendSearchResults($chatId, $response);
+    }
+}
+
+function sendSearchResults($chatId, $results) {
+    if (empty($results)) {
+        sendMessage($chatId, "No opportunities found matching your profile. Try updating your profile or broadening your search criteria.");
+        return;
+    }
+
+    foreach ($results as $opportunity) {
+        $message = "🎓 Opportunity Found:\n\n";
+        $message .= "📌 Title: " . ($opportunity['Title'] ?? "N/A") . "\n";
+        $message .= "🌍 Country: " . ($opportunity['Country'] ?? "N/A") . "\n";
+        $message .= "🏛️ University: " . ($opportunity['University'] ?? "N/A") . "\n";
+        $message .= "🔬 Branch/Department: " . ($opportunity['Branch Or Department'] ?? "N/A") . "\n";
+        $message .= "👨‍🏫 Supervisor: " . ($opportunity['Supervisor'] ?? "N/A") . "\n";
+        $message .= "📧 Email: " . ($opportunity['Email'] ?? "N/A") . "\n";
+        $message .= "📅 Application deadline: " . ($opportunity['Application deadline'] ?? "N/A") . "\n";
+        $message .= "👥 Supervisors: " . ($opportunity['Supervisors'] ?? "N/A") . "\n";
+        $message .= "📨 Emails: " . ($opportunity['Emails'] ?? "N/A") . "\n";
+        $message .= "📧 Supervisor Emails: " . ($opportunity['Supervisor Emails'] ?? "N/A") . "\n";
+        $message .= "🔬 Fields: " . ($opportunity['Fields'] ?? "N/A") . "\n";
+        $message .= "ℹ️ More Websites or Contacts: " . ($opportunity['More Websites or Contacts'] ?? "N/A") . "\n";
+
+        sendMessage($chatId, $message);
+    }
+}
+
+function clearDate($data)
+{
+    $data = trim($data);
+    $data = explode(" ",$data);
+    $data[0] = null;
+    $data = implode(" ",$data);
+    return $data;
 }
