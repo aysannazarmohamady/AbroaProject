@@ -48,6 +48,9 @@ if (isset($updateArray['message'])) {
         case "📧 Email Writing":
             handlePromptingOption($chatId, $message);
             break;
+        case "🧑‍🏫 Search Supervisors":
+            handleSearchSupervisors($chatId);
+            break;
         default:
             handleProfileData($chatId, $message, $userId);
             break;
@@ -68,7 +71,7 @@ function sendMainMenu($chatId) {
         "keyboard" => [
             [["text" => "🔍 Search Opportunities"], ["text" => "👤 User Profile"]],
             [["text" => "🤖 AI Assistant"], ["text" => "❓ Help and Support"]],
-            [["text" => "📋 View/Edit Profile"]]
+            [["text" => "📋 View/Edit Profile"], ["text" => "🧑‍🏫 Search Supervisors"]]
         ],
         "resize_keyboard" => true
     ];
@@ -157,6 +160,18 @@ function handleProfileData($chatId, $message, $userId) {
     if (!isset($data[$userId]) || !isset($data[$userId]['step'])) {
         return;
     }
+    
+    if ($data[$userId]['step'] == 'search_supervisors') {
+        // Process supervisor search request
+        $searchInfo = parseSearchInfo($message);
+        $result = searchSupervisors($searchInfo);
+        sendMessage($chatId, $result);
+        unset($data[$userId]['step']);
+        saveData($data);
+        sendMainMenu($chatId);
+        return;
+    }
+    
     switch ($data[$userId]['step']) {
         case 1:
             $data[$userId]['email'] = $message;
@@ -327,4 +342,46 @@ function inviteToChannel($chatId) {
     ];
     sendMessage($chatId, $message, $keyboard);
 }
-?>
+
+function handleSearchSupervisors($chatId) {
+    $message = "To search for supervisors, please provide the following information:
+
+1. Field of study (e.g., Computer Science, Biology, etc.)
+2. University or institution (optional)
+3. Research topic or keywords (optional)
+
+Please enter this information in the format:
+Field: [Your field]
+University: [University name] (optional)
+Topic: [Research topic or keywords] (optional)
+
+For example:
+Field: Computer Science
+University: MIT
+Topic: Machine Learning, Artificial Intelligence";
+
+    sendMessage($chatId, $message);
+    
+    $data = loadData();
+    $data[$chatId]['step'] = 'search_supervisors';
+    saveData($data);
+}
+
+function parseSearchInfo($message) {
+    $lines = explode("\n", $message);
+    $info = [];
+    foreach ($lines as $line) {
+        if (strpos($line, "Field:") !== false) {
+            $info['field'] = trim(substr($line, 6));
+        } elseif (strpos($line, "University:") !== false) {
+            $info['university'] = trim(substr($line, 11));
+        } elseif (strpos($line, "Topic:") !== false) {
+            $info['topic'] = trim(substr($line, 6));
+        }
+    }
+    return $info;
+}
+
+function searchSupervisors($info) {
+    
+}
