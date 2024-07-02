@@ -12,6 +12,12 @@ if (isset($updateArray['message'])) {
     $message = $updateArray['message']['text'];
     $userId = $updateArray['message']['from']['id'];
 
+    // Check if the user is a member of the channel
+    if (!isChannelMember($userId, $channelUsername)) {
+        inviteToChannel($chatId);
+        exit;
+    }
+
     switch ($message) {
         case "/start":
             sendMainMenu($chatId);
@@ -297,5 +303,28 @@ function saveData($data) {
     global $dataFile;
     $json = json_encode($data);
     file_put_contents($dataFile, $json);
+}
+
+function isChannelMember($userId, $channelUsername) {
+    global $apiUrl;
+    $url = $apiUrl . "getChatMember?chat_id=" . $channelUsername . "&user_id=" . $userId;
+    $response = file_get_contents($url);
+    $result = json_decode($response, true);
+    
+    if ($result['ok'] && in_array($result['result']['status'], ['member', 'administrator', 'creator'])) {
+        return true;
+    }
+    return false;
+}
+
+function inviteToChannel($chatId) {
+    global $channelUsername;
+    $message = "To use this bot, you need to be a member of our channel. Please join " . $channelUsername . " and then start the bot again.";
+    $keyboard = [
+        "inline_keyboard" => [
+            [["text" => "Join Channel", "url" => "https://t.me/" . ltrim($channelUsername, '@')]]
+        ]
+    ];
+    sendMessage($chatId, $message, $keyboard);
 }
 ?>
