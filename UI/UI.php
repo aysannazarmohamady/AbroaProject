@@ -125,10 +125,11 @@ function handleGlobalSearch($chatId) {
     sendMessage($chatId, "Please enter your global search criteria:");
     // Implement the logic for global search
 }
-
-function handleAdvancedSearch($chatId) {
-    sendMessage($chatId, "Advanced Search: Please specify your detailed search criteria.");
-    // Implement the logic for advanced search
+function requestGlobalSearchKeyword($chatId, $userId) {
+    sendMessage($chatId, "Please enter a keyword for the global search:");
+    $data = loadData();
+    $data[$userId]['step'] = 'global_search';
+    saveData($data);
 }
 
 function sendAIAssistantMenu($chatId) {
@@ -219,6 +220,16 @@ function handleProfileData($chatId, $message, $userId) {
         $searchInfo = parseSearchInfo($message);
         $result = searchSupervisors($searchInfo);
         sendMessage($chatId, $result);
+        unset($data[$userId]['step']);
+        saveData($data);
+        sendMainMenu($chatId);
+        return;
+    }
+    if ($data[$userId]['step'] == 'global_search') {
+        // Process global search keyword
+        $keyword = $message;
+        sendMessage($chatId, "Searching globally for: $keyword");
+        // Implement the actual global search logic using the keyword
         unset($data[$userId]['step']);
         saveData($data);
         sendMainMenu($chatId);
