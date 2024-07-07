@@ -27,20 +27,22 @@ def extract_country_from_url(url):
         return match.group(1).replace("-", " ").title()
     return "Unknown"
 
-def get_researchgate_links(google_search_url):
+def scrape_google_results(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    response = requests.get(google_search_url, headers=headers)
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     
-    researchgate_links = []
+    results = []
     for div in soup.select('#rso > div'):
-        link = div.find('a')
-        if link and 'researchgate.net' in link.get('href', ''):
-            researchgate_links.append(link['href'])
+        link = div.select_one('a')
+        if link and link.has_attr('href'):
+            href = link['href']
+            if any(domain in href for domain in ['linkedin.com', 'researchgate.net', 'scholar.google.com']):
+                results.append(href)
     
-    return researchgate_links
+    return results
 
 def scrape_page(url, country):
     response = requests.get(url)
@@ -94,9 +96,9 @@ def scrape_page(url, country):
             google_search_url = create_google_search_url(supervisor, university)
             print("Google Search URL:", google_search_url)
             
-            researchgate_links = get_researchgate_links(google_search_url)
-            print("ResearchGate Links:")
-            for link in researchgate_links:
+            google_results = scrape_google_results(google_search_url)
+            print("Relevant links found:")
+            for link in google_results:
                 print(link)
             
             time.sleep(2)
@@ -110,9 +112,10 @@ def scrape_page(url, country):
 
         print("-" * 50)
 
+# Main execution
 for url_template in urls:
     country = extract_country_from_url(url_template)
-    for i in range(1, 5):  # Assuming we want to scrape the first 4 pages
+    for i in range(1, 5):  # Scraping the first 4 pages
         url = url_template.format(i)
         print(f"Scraping URL: {url}")
         scrape_page(url, country)
