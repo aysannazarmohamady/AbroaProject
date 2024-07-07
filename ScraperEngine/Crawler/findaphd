@@ -1,0 +1,123 @@
+import requests
+from bs4 import BeautifulSoup
+import urllib.parse
+import re
+
+# List of URLs to scrape with a placeholder for page number
+urls = [
+    "https://www.findaphd.com/phds/usa/?g00l20&PG={}",
+    "https://www.findaphd.com/phds/canada/?g00l20&PG={}",
+    "https://www.findaphd.com/phds/united-kingdom/?g0w900&PG={}",
+    "https://www.findaphd.com/phds/germany/?g0Mw00&PG={}",
+    "https://www.findaphd.com/phds/australia/?g00w20&PG={}",
+    "https://www.findaphd.com/phds/new-zealand/?g0gb30&PG={}",
+    "https://www.findaphd.com/phds/france/?g0g920&PG={}",
+    "https://www.findaphd.com/phds/ireland/?g00y00&PG={}"
+]
+
+def create_google_search_url(supervisor, university):
+    query = f"{supervisor} {university}"
+    encoded_query = urllib.parse.quote(query)
+    return f"https://www.google.com/search?q={encoded_query}"
+
+# Function to extract country from the URL
+def extract_country_from_url(url):
+    match = re.search(r'phds/([^/?]+)', url)
+    if match:
+        return match.group(1).replace("-", " ").title()
+    return "Unknown"
+
+# Function to scrape data from a single page URL
+def scrape_page(url, country):
+    # Send a GET request to the URL
+    response = requests.get(url)
+
+    # Parse the HTML content
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Find all div elements with the specified class and id
+    result_divs = soup.find_all('div', class_='resultsRow phd-result-row-standard phd-result row py-2 w-100 px-0 m-0', id=lambda x: x and x.startswith('searchResultImpression'))
+
+    # Iterate through each result div
+    for div in result_divs:
+        print("Level: PhD")
+        print("Country:", country)
+
+        # Find the title element within the div
+        title_element = div.select_one('h3 > a.h4.text-dark.mx-0.mb-3')
+
+        # If title element is found, print its text
+        if title_element:
+            print("Title:", title_element.text.strip())
+        else:
+            print("Title not found for this result")
+
+        university = ""
+        # Find the university element within the div
+        university_element = div.select_one('div.instDeptRow.phd-result__dept-inst.align-items-center.row.mx-0.mb-3 > a.instLink.col-24.px-0.col-md-auto.phd-result__dept-inst--inst.phd-result__dept-inst--title.h6.mb-0.text-secondary.font-weight-lighter > span')
+
+        # If university element is found, print its text
+        if university_element:
+            university = university_element.text.strip()
+            print("University:", university)
+        else:
+            print("University not found for this result")
+
+        # Find the branch/department element within the div
+        department_element = div.select_one('div.instDeptRow.phd-result__dept-inst.align-items-center.row.mx-0.mb-3 > a.col-24.px-0.col-md-auto.deptLink.phd-result__dept-inst--dept.phd-result__dept-inst--title.h6.mb-0.text-secondary.font-weight-lighter')
+
+        # If branch/department element is found, print its text
+        if department_element:
+            print("Branch/Department:", department_element.text.strip())
+        else:
+            print("Branch/Department not found for this result")
+
+        # Find the overview element within the div
+        overview_element = div.select_one('div.desc.phd-result__description.row.mb-3.mx-0')
+
+        # If overview element is found, print its text
+        if overview_element:
+            overview_text = overview_element.text.replace("Read more", "").strip()
+            print("Overview:", overview_text)
+        else:
+            print("Overview not found for this result")
+
+        supervisor = ""
+        # Find the supervisor element within the div
+        supervisor_element = div.select_one('div.phd-result__key-info--outer.row.p-0.mx-n1')
+
+        # If supervisor element is found, print its text without "Supervisor:"
+        if supervisor_element:
+            supervisor_text = supervisor_element.text.strip()
+            print(supervisor_text)
+            if supervisor_text.startswith("Supervisor:"):
+                supervisor = supervisor_text[11:].strip()
+            else:
+                supervisor = supervisor_text
+        else:
+            print("Supervisor not found for this result")
+
+        # Create Google search URL for each supervisor and university
+        if supervisor and university:
+            google_search_url = create_google_search_url(supervisor, university)
+            print("Google Search URL:", google_search_url)
+
+        # Find the link element within the div
+        link_element = div.select_one('div.col-md-6.col-lg-5.col-24.order-md-2.p-0.d-flex.align-items-start.flex-column.justify-content-end > div > a')
+
+        # If link element is found, print its href with the base URL
+        if link_element and link_element.has_attr('href'):
+            link_url = "https://www.findaphd.com" + link_element['href']
+            print("Link:", link_url)
+        else:
+            print("Link not found for this result")
+
+        print("-" * 50)  # Print a separator line
+
+# Iterate through each URL and each page
+for url_template in urls:
+    country = extract_country_from_url(url_template)
+    for i in range(1, 5):  # Assuming we want to scrape the first 4 pages
+        url = url_template.format(i)
+        print(f"Scraping URL: {url}")
+        scrape_page(url, country)
