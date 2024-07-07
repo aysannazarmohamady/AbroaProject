@@ -34,22 +34,31 @@ def scrape_google_results(url):
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     
-    results = []
+    linkedin_links = []
+    researchgate_links = []
+    scholar_links = []
+
     for div in soup.select('#rso > div'):
         link = div.select_one('a')
         if link and link.has_attr('href'):
             href = link['href']
-            if any(domain in href for domain in ['linkedin.com', 'researchgate.net', 'scholar.google.com']):
-                results.append(href)
+            if 'linkedin.com' in href:
+                linkedin_links.append(href)
+            elif 'researchgate.net' in href:
+                researchgate_links.append(href)
+            elif 'scholar.google.com' in href:
+                scholar_links.append(href)
     
-    return results
+    return linkedin_links, researchgate_links, scholar_links
 
-def scrape_page(url, country):
+def scrape_page(url, country, position_counter):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     result_divs = soup.find_all('div', class_='resultsRow phd-result-row-standard phd-result row py-2 w-100 px-0 m-0', id=lambda x: x and x.startswith('searchResultImpression'))
 
     for div in result_divs:
+        position_counter += 1
+        print(f"{position_counter}")
         print("Level: PhD")
         print("Country:", country)
 
@@ -96,9 +105,15 @@ def scrape_page(url, country):
             google_search_url = create_google_search_url(supervisor, university)
             print("Google Search URL:", google_search_url)
             
-            google_results = scrape_google_results(google_search_url)
-            print("Relevant links found:")
-            for link in google_results:
+            linkedin_links, researchgate_links, scholar_links = scrape_google_results(google_search_url)
+            print("LinkedIn links found:")
+            for link in linkedin_links:
+                print(link)
+            print("ResearchGate links found:")
+            for link in researchgate_links:
+                print(link)
+            print("Google Scholar links found:")
+            for link in scholar_links:
                 print(link)
             
             time.sleep(2)
@@ -111,11 +126,13 @@ def scrape_page(url, country):
             print("Link not found for this result")
 
         print("-" * 50)
+    return position_counter
 
 # Main execution
+position_counter = 0
 for url_template in urls:
     country = extract_country_from_url(url_template)
     for i in range(1, 5):  # Scraping the first 4 pages
         url = url_template.format(i)
         print(f"Scraping URL: {url}")
-        scrape_page(url, country)
+        position_counter = scrape_page(url, country, position_counter)
