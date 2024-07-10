@@ -12,7 +12,6 @@ if (isset($updateArray['message'])) {
     $message = $updateArray['message']['text'];
     $userId = $updateArray['message']['from']['id'];
 
-    // Check if the user is a member of the channel
     if (!isChannelMember($userId, $channelUsername)) {
         inviteToChannel($chatId);
         exit;
@@ -38,7 +37,7 @@ if (isset($updateArray['message'])) {
             sendAIAssistantMenu($chatId);
             break;
         case "❓ Help and Support":
-            sendMessage($chatId, "You selected: Help and Support");
+            sendHelpAndSupport($chatId);
             break;
         case "📋 View/Edit Profile":
             viewEditProfile($chatId, $userId);
@@ -115,19 +114,16 @@ function sendNewSearchMenu($chatId) {
 function handleLatestOpportunities($chatId) {
     sendMessage($chatId, "Searching for the latest opportunities...");
     LatestPosts($chatId);
-    // Implement the logic to fetch and display the latest opportunities
 }
 
 function handleGlobalSearch($chatId, $userId,$message) {
-    #sendMessage($chatId, "Please enter your global search criteria:");
     requestGlobalSearchKeyword($chatId, $userId,$message);
-    // Implement the logic for global search
 }
+
 function requestGlobalSearchKeyword($chatId, $userId,$message) {
     sendMessage($chatId, "Please enter a keyword for the global search:");
     $data = loadData();
     $data[$userId]['step'] = 'global_search';
-    
     saveData($data);
 }
 
@@ -196,7 +192,33 @@ Use this information to write a personalized and relevant cover letter";
             sendMessage($chatId, $message);
             break;
         case "📧 Email Writing":
-            sendMessage($chatId, "You selected Email Writing. Please provide details for your email.");
+            $message = "
+**Subject Options:**
+
+1. Application for PhD Position in [Specific Field]
+2. Inquiry About PhD Supervision in [Specific Research Area]
+3. Interest in PhD Research Under Your Supervision
+4. Potential PhD Research Collaboration
+
+**Body:**
+
+Dear Professor [Supervisor's Last Name],
+
+My name is [Your Full Name], and I am currently [Your Current Position/Status] at [Your Current Institution or Workplace]. I am writing to express my interest in pursuing a PhD under your supervision in the field of [Field of Study].
+
+I have a strong background in [Your Relevant Experience or Education], where I [briefly describe your relevant experience or education]. I am particularly interested in your work on [Mention Specific Research or Publications of the Supervisor] and would like to contribute to this area through my research.
+
+Attached to this email, you will find my resume and a brief research proposal that outlines my ideas and how they align with your current research projects. I would be honored to discuss this opportunity further and explore how my background and interests could contribute to your team.
+
+Thank you for considering my application. I look forward to the possibility of working with you and contributing to your research.
+
+Sincerely,
+
+[Your Full Name]  
+[Your Contact Information]  
+[Your LinkedIn Profile, if applicable]  
+[Attachment: Resume, Research Proposal]";
+            sendMessage($chatId, $message);
             break;
     }
 }
@@ -215,8 +237,6 @@ function handleProfileData($chatId, $message, $userId) {
     }
     
     if ($data[$userId]['step'] == 'search_supervisors') {
-        // Process supervisor search request
-        //$searchInfo = parseSearchInfo($message);
         $result = searchSupervisors($chatId,$userId,$message);
         sendMessage($chatId, $result);
         unset($data[$userId]['step']);
@@ -225,7 +245,6 @@ function handleProfileData($chatId, $message, $userId) {
         return;
     }
     if ($data[$userId]['step'] == 'global_search') {
-        // Process global search keyword
         $keyword = $message;
         sendMessage($chatId, "Searching globally for: $keyword");
         searchGlobal($chatId, $userId,$message);
@@ -239,47 +258,62 @@ function handleProfileData($chatId, $message, $userId) {
         case 1:
             $data[$userId]['email'] = $message;
             $data[$userId]['step'] = 2;
-            sendFieldOfStudyKeyboard($chatId);
+            sendMessage($chatId, "Please enter your phone number:");
             break;
         case 2:
+            $data[$userId]['phone'] = $message;
+            $data[$userId]['step'] = 3;
+            sendMessage($chatId, "Please enter your country of residence:");
+            break;
+        case 3:
+            $data[$userId]['residence'] = $message;
+            $data[$userId]['step'] = 4;
+            sendMessage($chatId, "Do you have a language certificate? (Yes/No)");
+            break;
+        case 4:
+            $data[$userId]['language_certificate'] = $message;
+            $data[$userId]['step'] = 5;
+            sendFieldOfStudyKeyboard($chatId);
+            break;
+        case 5:
             if ($message == "🌍 Other") {
                 sendMessage($chatId, "Please enter your preferred field of study:");
-                $data[$userId]['step'] = 2.1;
+                $data[$userId]['step'] = 5.1;
             } else {
                 $data[$userId]['field'] = $message;
-                $data[$userId]['step'] = 3;
+                $data[$userId]['step'] = 6;
                 sendCountryKeyboard($chatId);
             }
             break;
-        case 2.1:
+        case 5.1:
             $data[$userId]['field'] = $message;
-            $data[$userId]['step'] = 3;
+            $data[$userId]['step'] = 6;
             sendCountryKeyboard($chatId);
             break;
-        case 3:
+        case 6:
             if ($message == "🌍 Other") {
                 sendMessage($chatId, "Please enter your favorite country manually:");
-                $data[$userId]['step'] = 3.1;
+                $data[$userId]['step'] = 6.1;
             } else {
                 $data[$userId]['country'] = $message;
-                $data[$userId]['step'] = 4;
+                $data[$userId]['step'] = 7;
                 sendEducationLevelKeyboard($chatId);
             }
             break;
-        case 3.1:
+        case 6.1:
             $data[$userId]['country'] = $message;
-            $data[$userId]['step'] = 4;
+            $data[$userId]['step'] = 7;
             sendEducationLevelKeyboard($chatId);
             break;
-        case 4:
+        case 7:
             $data[$userId]['education_level'] = $message;
-            $data[$userId]['step'] = 5;
+            $data[$userId]['step'] = 8;
             sendCVUploadOption($chatId);
             break;
-        case 5:
+        case 8:
             if ($message == "Yes") {
                 sendMessage($chatId, "Please upload your CV file.");
-                $data[$userId]['step'] = 6;
+                $data[$userId]['step'] = 9;
             } elseif ($message == "No") {
                 unset($data[$userId]['step']);
                 saveData($data);
@@ -287,7 +321,7 @@ function handleProfileData($chatId, $message, $userId) {
                 sendMainMenu($chatId);
             }
             break;
-        case 6:
+        case 9:
             if (isset($updateArray['message']['document'])) {
                 $data[$userId]['cv_file_id'] = $updateArray['message']['document']['file_id'];
                 unset($data[$userId]['step']);
@@ -320,10 +354,11 @@ function sendFieldOfStudyKeyboard($chatId) {
 function sendCountryKeyboard($chatId) {
     $keyboard = [
         "keyboard" => [
-            [["text" => "🇺🇸 USA"], ["text" => "🇨🇦 Canada"]],
-            [["text" => "🇬🇧 UK"], ["text" => "🇦🇺 Australia"]],
-            [["text" => "🇫🇮 Finland"], ["text" => "🇳🇱 Netherlands"]],
-            [["text" => "🇦🇹 Austria"], ["text" => "🌍 Other"]]
+            [["text" => "🇬🇧 UK"], ["text" => "🇩🇪 Germany"]],
+            [["text" => "🇨🇦 Canada"], ["text" => "🇦🇺 Australia"]],
+            [["text" => "🇳🇿 New Zealand"], ["text" => "🇫🇷 France"]],
+            [["text" => "🇮🇪 Ireland"], ["text" => "🇺🇸 USA"]],
+            [["text" => "🌍 Other"]]
         ],
         "resize_keyboard" => true
     ];
@@ -339,6 +374,9 @@ function sendEducationLevelKeyboard($chatId) {
         "resize_keyboard" => true
     ];
     sendMessage($chatId, "Please choose your preferred education level:", $keyboard);
+    
+    // Notify the user that currently only PhD opportunities are available
+    sendMessage($chatId, "⚠️ Currently, only PhD opportunities are available!");
 }
 
 function sendCVUploadOption($chatId) {
@@ -357,10 +395,13 @@ function viewEditProfile($chatId, $userId) {
         $profile = $data[$userId];
         $message = "Your Profile:\n\n";
         $message .= "Email: " . ($profile['email'] ?? "Not set") . "\n";
+        $message .= "Phone: " . ($profile['phone'] ?? "Not set") . "\n";
+        $message .= "Country of Residence: " . ($profile['residence'] ?? "Not set") . "\n";
+        $message .= "Language Certificate: " . ($profile['language_certificate'] ?? "Not set") . "\n";
         $message .= "Field of Study: " . ($profile['field'] ?? "Not set") . "\n";
         $message .= "Preferred Country: " . ($profile['country'] ?? "Not set") . "\n";
         $message .= "Education Level: " . ($profile['education_level'] ?? "Not set") . "\n";
-        $message .= "CV: " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
+$message .= "CV: " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
         $message .= "To edit your profile, select 'User Profile' from the main menu.";
         sendMessage($chatId, $message);
     } else {
@@ -414,23 +455,7 @@ function handleSearchSupervisors($chatId) {
     saveData($data);
 }
 
-function parseSearchInfo($message) {
-    $lines = explode("\n", $message);
-    $info = [];
-    foreach ($lines as $line) {
-        if (strpos($line, "Field:") !== false) {
-            $info['field'] = trim(substr($line, 6));
-        } elseif (strpos($line, "University:") !== false) {
-            $info['university'] = trim(substr($line, 11));
-        } elseif (strpos($line, "Topic:") !== false) {
-            $info['topic'] = trim(substr($line, 6));
-        }
-    }
-    return $info;
-}
-
-function searchSupervisors($chatId, $userId,$message) {
-
+function searchSupervisors($chatId, $userId, $message) {
     $url = 'https://jet.aysan.dev/api_v2.php';
     $data = array(
         'action' => 'all',
@@ -455,7 +480,6 @@ function searchSupervisors($chatId, $userId,$message) {
         sendSearchResultsSupervisor($chatId, $response);
     }
 }
-
 
 function searchOpportunities($chatId, $userId) {
     $userData = loadData();
@@ -493,8 +517,7 @@ function searchOpportunities($chatId, $userId) {
     }
 }
 
-function searchGlobal($chatId, $userId,$message) {
-
+function searchGlobal($chatId, $userId, $message) {
     $url = 'https://jet.aysan.dev/api_v2.php';
     $data = array(
         'action' => 'all',
@@ -555,32 +578,32 @@ function sendSearchResults($chatId, $results) {
 
 function sendSearchResultsSupervisor($chatId, $results) {
     if (empty($results)) {
-        sendMessage($chatId, "No opportunities found matching your profile. Try updating your profile or broadening your search criteria.");
+        sendMessage($chatId, "No supervisors found matching your criteria. Try broadening your search.");
         return;
     }
 
-    foreach ($results as $opportunity) {
-        $message = "🎓 Supervisors Found:\n\n";
-        if(isset($opportunity['supervisors']) && !empty($opportunity['supervisors']))
+    foreach ($results as $supervisor) {
+        $message = "🎓 Supervisor Found:\n\n";
+        if(isset($supervisor['supervisors']) && !empty($supervisor['supervisors']))
         {
-            $message .= "📌 Supervisors: " . ($opportunity['supervisors'] ?? "N/A") . "\n";
+            $message .= "📌 Name: " . ($supervisor['supervisors'] ?? "N/A") . "\n";
         }
         
-        if(isset($opportunity['country']) && !empty($opportunity['Country']))
-        {$message .= "🌍 Country: " . ($opportunity['Country'] ?? "N/A") . "\n";}
-        if(isset($opportunity['Universit']) && !empty($opportunity['Universit'])){
-        $message .= "🏛️ University: " . ($opportunity['University'] ?? "N/A") . "\n";}
-        if(isset($opportunity['branch']) && !empty($opportunity['branch'])){
-        $message .= "🔬 Branch/Department: " . ($opportunity['branch'] ?? "N/A") . "\n";}
-        if(isset($opportunity['linkedin_link']) && !empty($opportunity['linkedin_link'])){
-        $message .= "👨‍🏫 Linkedin: " . ($opportunity['linkedin_link'] ?? "N/A") . "\n";}
-        if(isset($opportunity['Email']) && !empty($opportunity['Email'])){
-        $message .= "📧 Email: " . ($opportunity['Email'] ?? "N/A") . "\n";}
-        if(isset($opportunity['tags']) && !empty($opportunity['tags'])){
-        $message .= "🔬 Tags: " . ($opportunity['tags'] ?? "N/A") . "\n";}
+        if(isset($supervisor['country']) && !empty($supervisor['Country']))
+        {$message .= "🌍 Country: " . ($supervisor['Country'] ?? "N/A") . "\n";}
+        if(isset($supervisor['Universit']) && !empty($supervisor['Universit'])){
+        $message .= "🏛️ University: " . ($supervisor['University'] ?? "N/A") . "\n";}
+        if(isset($supervisor['branch']) && !empty($supervisor['branch'])){
+        $message .= "🔬 Branch/Department: " . ($supervisor['branch'] ?? "N/A") . "\n";}
+        if(isset($supervisor['linkedin_link']) && !empty($supervisor['linkedin_link'])){
+        $message .= "👨‍🏫 LinkedIn: " . ($supervisor['linkedin_link'] ?? "N/A") . "\n";}
+        if(isset($supervisor['Email']) && !empty($supervisor['Email'])){
+        $message .= "📧 Email: " . ($supervisor['Email'] ?? "N/A") . "\n";}
+        if(isset($supervisor['tags']) && !empty($supervisor['tags'])){
+        $message .= "🔬 Tags: " . ($supervisor['tags'] ?? "N/A") . "\n";}
         
-        if(isset($opportunity['More Websites or Contacts']) && !empty($opportunity['More Websites or Contacts'])){
-        $message .= "ℹ️ More Websites or Contacts: " . ($opportunity['More Websites or Contacts'] ?? "N/A") . "\n";}
+        if(isset($supervisor['More Websites or Contacts']) && !empty($supervisor['More Websites or Contacts'])){
+        $message .= "ℹ️ More Websites or Contacts: " . ($supervisor['More Websites or Contacts'] ?? "N/A") . "\n";}
 
         sendMessage($chatId, $message);
     }
@@ -619,5 +642,23 @@ function LatestPosts($chatId)
         $response = json_decode($result, true);
         sendSearchResults($chatId, $response);
     }
+}
 
+function sendHelpAndSupport($chatId) {
+    $message = "Welcome to the Help and Support section!\n\n"
+             . "This bot helps you search for academic opportunities and manage your profile. Here's a quick guide:\n\n"
+             . "🔍 Search Opportunities: Find opportunities based on your profile or perform a new search.\n"
+             . "👤 User Profile: Set up or edit your personal information.\n"
+             . "🤖 AI Assistant: Get help with resume writing, cover letters, and emails.\n"
+             . "📋 View/Edit Profile: Review or update your existing profile.\n"
+             . "🧑‍🏫 Search Supervisors: Find potential supervisors based on your research interests.\n\n"
+             . "We're here to help you in your academic journey!";
+
+    $keyboard = [
+        "inline_keyboard" => [
+            [["text" => "Contact Support", "url" => "https://t.me/Aysan_dev"]]
+        ]
+    ];
+
+    sendMessage($chatId, $message, $keyboard);
 }
