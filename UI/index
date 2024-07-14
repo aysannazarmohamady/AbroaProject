@@ -68,12 +68,27 @@ if (isset($updateArray['message'])) {
     }
 }
 
-function sendMessage($chatId, $message, $keyboard = null) {
+function sendMessage1($chatId, $message, $keyboard = null) {
     global $apiUrl;
     $url = $apiUrl . "sendMessage?chat_id=" . $chatId . "&text=" . urlencode($message);
     if ($keyboard) {
         $url .= "&reply_markup=" . urlencode(json_encode($keyboard));
     }
+    file_get_contents($url);
+}
+
+function sendMessage($chatId, $message, $keyboard = null, $parseHtml = false) {
+    global $apiUrl;
+    $url = $apiUrl . "sendMessage?chat_id=" . $chatId . "&text=" . urlencode($message);
+    
+    if ($keyboard) {
+        $url .= "&reply_markup=" . urlencode(json_encode($keyboard));
+    }
+    
+    if ($parseHtml) {
+        $url .= "&parse_mode=HTML";
+    }
+    
     file_get_contents($url);
 }
 
@@ -543,71 +558,257 @@ function searchGlobal($chatId, $userId, $message) {
     }
 }
 
+//خروجی نمایش
 function sendSearchResults($chatId, $results) {
     if (empty($results)) {
         sendMessage($chatId, "No opportunities found matching your profile. Try updating your profile or broadening your search criteria.");
         return;
     }
 
-    foreach ($results as $opportunity) {
-        $message = "🎓 Opportunity Found:\n\n";
-        if(isset($opportunity['title']) && !empty($opportunity['title']))
-        {
-            $message .= "📌 Title: " . ($opportunity['title'] ?? "N/A") . "\n";
-        }
-        
-        if(isset($opportunity['country']) && !empty($opportunity['Country']))
-        {$message .= "🌍 Country: " . ($opportunity['Country'] ?? "N/A") . "\n";}
-        if(isset($opportunity['Universit']) && !empty($opportunity['Universit'])){
-        $message .= "🏛️ University: " . ($opportunity['University'] ?? "N/A") . "\n";}
-        if(isset($opportunity['branch']) && !empty($opportunity['branch'])){
-        $message .= "🔬 Branch/Department: " . ($opportunity['branch'] ?? "N/A") . "\n";}
-        if(isset($opportunity['Supervisors']) && !empty($opportunity['Supervisors'])){
-        $message .= "👨‍🏫 Supervisor: " . ($opportunity['Supervisors'] ?? "N/A") . "\n";}
-        if(isset($opportunity['Email']) && !empty($opportunity['Email'])){
-        $message .= "📧 Email: " . ($opportunity['Email'] ?? "N/A") . "\n";}
-        if(isset($opportunity['tags']) && !empty($opportunity['tags'])){
-        $message .= "🔬 Tags: " . ($opportunity['tags'] ?? "N/A") . "\n";}
-        
-        if(isset($opportunity['More Websites or Contacts']) && !empty($opportunity['More Websites or Contacts'])){
-        $message .= "ℹ️ More Websites or Contacts: " . ($opportunity['More Websites or Contacts'] ?? "N/A") . "\n";}
+    foreach ($results as $researcher) {
+        $output = "<b>🎓 Full Information of The Position</b>\n\n";
 
-        sendMessage($chatId, $message);
+        if (!empty($researcher['title'])) {
+            $output .= "👤 <b>" . htmlspecialchars($researcher['title'], ENT_NOQUOTES) . "</b>\n\n";
+        }
+
+        $fields = [
+            'level' => '🏅 Level: ',
+            'country' => '🌍 Country: ',
+            'university' => '🏛 University: ',
+            'branch' => '🔬 Branch: '
+        ];
+
+        foreach ($fields as $field => $label) {
+            if (!empty($researcher[$field])) {
+                $output .= $label . htmlspecialchars($researcher[$field], ENT_NOQUOTES) . "\n";
+            }
+        }
+
+        $output .= "\n";
+
+        if (!empty($researcher['overview'])) {
+            $output .= "📝 <b>Overview:</b>\n" . htmlspecialchars($researcher['overview'], ENT_NOQUOTES) . "\n\n";
+        }
+
+        $jsonFields = [
+            'supervisors' => '👨‍🏫 <b>Supervisor(s):</b>',
+            'tags' => '🏷 <b>Related Fields:</b>',
+            'email' => '📧 <b>Email(s):</b>'
+        ];
+
+        foreach ($jsonFields as $field => $label) {
+            if (!empty($researcher[$field])) {
+                $cleaned_string = stripslashes($researcher[$field]);
+                $items = json_decode($cleaned_string, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($items) && !empty($items)) {
+                    $output .= "$label\n";
+                    foreach ($items as $item) {
+                        
+                        $item = str_replace("Supervisors: ","",trim($item));
+                        
+                        $output .= "• " . htmlspecialchars(trim($item), ENT_NOQUOTES) . "\n";
+                    }
+                    $output .= "\n";
+                }
+            }
+        }
+
+//        if (!empty($researcher['url'])) {
+//            $output .= "🌐 Website: <a href='" . htmlspecialchars($researcher['url'], ENT_QUOTES) . "'>Link</a>\n\n";
+        //}
+
+        $output .= "🔗 <b>Online Profiles:</b>\n";
+        $profiles = [
+            'linkedin_link' => 'LinkedIn Supervisor Page',
+            'scholar_link' => 'Google Scholar Supervisor Page',
+            'researchgate_link' => 'ResearchGate Supervisor Page',
+            //'google_link' => 'Google'
+        ];
+
+        foreach ($profiles as $key => $name) {
+            if (!empty($researcher[$key])) {
+                $cleaned_string = stripslashes($researcher[$key]);
+                $links = json_decode($cleaned_string, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($links) && !empty($links)) {
+                    //$output .= "🌐 <b>$name links:</b>\n";
+                    $output .= "• <a href='" . htmlspecialchars($links[0], ENT_QUOTES) . "'>$name</a>\n";
+                    /*
+                    foreach ($links as $link) {
+                        $output .= "• <a href='" . htmlspecialchars($link, ENT_QUOTES) . "'>$name</a>\n";
+                    }
+                    */
+                    $output .= "\n";
+                }
+            }
+        }
+
+        if (!empty($researcher['institution_link'])) {
+            $output .= "• <a href='" . htmlspecialchars($researcher['institution_link'], ENT_QUOTES) . "'>🌐 <b>Institution Page</b></a>\n\n";
+        }
+
+        if (!empty($researcher['funds'])) {
+            $cleaned_string = stripslashes($researcher['funds']);
+            $funds = json_decode($cleaned_string, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($funds) && !empty($funds)) {
+                $output .= "💰 <b>About Fund/Fee:</b>\n";
+                foreach ($funds as $fund) {
+                    if (!empty($fund)) {
+                        $output .= "• " . htmlspecialchars(trim($fund), ENT_NOQUOTES) . "\n";
+                    }
+                }
+                $output .= "\n";
+            }
+        }
+
+        if (!empty($researcher['extra'])) {
+            $cleaned_string = stripslashes($researcher['extra']);
+            $extra = json_decode($cleaned_string, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($extra) && !empty($extra)) {
+                $output .= "📌 <b>More Information:</b>\n";
+                foreach ($extra as $info) {
+                    if (!empty($info)) {
+                        $output .= "• " . htmlspecialchars(trim($info), ENT_NOQUOTES) . "\n";
+                    }
+                }
+                $output .= "\n";
+            }
+        }
+
+        sendMessage($chatId, $output, null, true);
     }
 }
 
+//خروجی سوپروایزر
 function sendSearchResultsSupervisor($chatId, $results) {
     if (empty($results)) {
-        sendMessage($chatId, "No supervisors found matching your criteria. Try broadening your search.");
+        sendMessage($chatId, "No opportunities found matching your profile. Try updating your profile or broadening your search criteria.");
         return;
     }
 
-    foreach ($results as $supervisor) {
-        $message = "🎓 Supervisor Found:\n\n";
-        if(isset($supervisor['supervisors']) && !empty($supervisor['supervisors']))
-        {
-            $message .= "📌 Name: " . ($supervisor['supervisors'] ?? "N/A") . "\n";
-        }
-        
-        if(isset($supervisor['country']) && !empty($supervisor['Country']))
-        {$message .= "🌍 Country: " . ($supervisor['Country'] ?? "N/A") . "\n";}
-        if(isset($supervisor['Universit']) && !empty($supervisor['Universit'])){
-        $message .= "🏛️ University: " . ($supervisor['University'] ?? "N/A") . "\n";}
-        if(isset($supervisor['branch']) && !empty($supervisor['branch'])){
-        $message .= "🔬 Branch/Department: " . ($supervisor['branch'] ?? "N/A") . "\n";}
-        if(isset($supervisor['linkedin_link']) && !empty($supervisor['linkedin_link'])){
-        $message .= "👨‍🏫 LinkedIn: " . ($supervisor['linkedin_link'] ?? "N/A") . "\n";}
-        if(isset($supervisor['Email']) && !empty($supervisor['Email'])){
-        $message .= "📧 Email: " . ($supervisor['Email'] ?? "N/A") . "\n";}
-        if(isset($supervisor['tags']) && !empty($supervisor['tags'])){
-        $message .= "🔬 Tags: " . ($supervisor['tags'] ?? "N/A") . "\n";}
-        
-        if(isset($supervisor['More Websites or Contacts']) && !empty($supervisor['More Websites or Contacts'])){
-        $message .= "ℹ️ More Websites or Contacts: " . ($supervisor['More Websites or Contacts'] ?? "N/A") . "\n";}
+    foreach ($results as $researcher) {
+        $output = "<b>👨‍🏫 Supervisor Information</b>\n\n";
 
-        sendMessage($chatId, $message);
+
+        if (!empty($researcher['supervisors'])) {
+            $cleaned_string = stripslashes($researcher['supervisors']);
+            $supervisors = json_decode($cleaned_string, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($supervisors) && !empty($supervisors)) {
+                foreach ($supervisors as $supervisor) {
+                    $output .= "• " . htmlspecialchars(trim($supervisor), ENT_NOQUOTES) . "\n";
+                }
+                $output .= "\n";
+            }
+        }
+
+        $output .= "<b>🎓 Details of Open Research Position</b>\n\n";
+
+        if (!empty($researcher['title'])) {
+            $output .= "👤 <b>" . htmlspecialchars($researcher['title'], ENT_NOQUOTES) . "</b>\n\n";
+        }
+
+        $fields = [
+            'level' => '🏅 Level: ',
+            'country' => '🌍 Country: ',
+            'university' => '🏛 University: ',
+            'branch' => '🔬 Branch: '
+        ];
+
+        foreach ($fields as $field => $label) {
+            if (!empty($researcher[$field])) {
+                $output .= $label . htmlspecialchars($researcher[$field], ENT_NOQUOTES) . "\n";
+            }
+        }
+
+        $output .= "\n";
+
+        if (!empty($researcher['overview'])) {
+            $output .= "📝 <b>Overview:</b>\n" . htmlspecialchars($researcher['overview'], ENT_NOQUOTES) . "\n\n";
+        }
+
+        $jsonFields = [
+            'tags' => '🏷 <b>Tags:</b>',
+            'email' => '📧 <b>Email:</b>'
+        ];
+
+        foreach ($jsonFields as $field => $label) {
+            if (!empty($researcher[$field])) {
+                $cleaned_string = stripslashes($researcher[$field]);
+                $items = json_decode($cleaned_string, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($items) && !empty($items)) {
+                    $output .= "$label\n";
+                    foreach ($items as $item) {
+                        $output .= "• " . htmlspecialchars(trim($item), ENT_NOQUOTES) . "\n";
+                    }
+                    $output .= "\n";
+                }
+            }
+        }
+
+        //if (!empty($researcher['url'])) {
+            //$output .= "🌐 Website: <a href='" . htmlspecialchars//($researcher['url'], ENT_QUOTES) . "'>Link</a>\n\n";
+        }
+
+        $output .= "🔗 <b>Online Profiles:</b>\n";
+        $profiles = [
+            'linkedin_link' => 'LinkedIn',
+            'scholar_link' => 'Google Scholar',
+            'researchgate_link' => 'ResearchGate',
+            //'google_link' => 'Google'
+        ];
+
+        foreach ($profiles as $key => $name) {
+            if (!empty($researcher[$key])) {
+                $cleaned_string = stripslashes($researcher[$key]);
+                $links = json_decode($cleaned_string, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($links) && !empty($links)) {
+                    //$output .= "🌐 <b>$name links:</b>\n";
+                    $output .= "• <a href='" . htmlspecialchars($links[0], ENT_QUOTES) . "'>$name</a>\n";
+                    /*
+                    foreach ($links as $link) {
+                        $output .= "• <a href='" . htmlspecialchars($link, ENT_QUOTES) . "'>$name</a>\n";
+                    }
+                    */
+                    $output .= "\n";
+                }
+            }
+        }
+
+        if (!empty($researcher['institution_link'])) {
+            $output .= "• <a href='" . htmlspecialchars($researcher['institution_link'], ENT_QUOTES) . "'>🌐 <b>Institution Page</b></a>\n\n";
+        }
+
+        if (!empty($researcher['funds'])) {
+            $cleaned_string = stripslashes($researcher['funds']);
+            $funds = json_decode($cleaned_string, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($funds) && !empty($funds)) {
+                $output .= "💰 <b>Funds:</b>\n";
+                foreach ($funds as $fund) {
+                    if (!empty($fund)) {
+                        $output .= "• " . htmlspecialchars(trim($fund), ENT_NOQUOTES) . "\n";
+                    }
+                }
+                $output .= "\n";
+            }
+        }
+
+        if (!empty($researcher['extra'])) {
+            $cleaned_string = stripslashes($researcher['extra']);
+            $extra = json_decode($cleaned_string, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($extra) && !empty($extra)) {
+                $output .= "📌 <b>More Information:</b>\n";
+                foreach ($extra as $info) {
+                    if (!empty($info)) {
+                        $output .= "• " . htmlspecialchars(trim($info), ENT_NOQUOTES) . "\n";
+                    }
+                }
+                $output .= "\n";
+            }
+        }
+
+        sendMessage($chatId, $output, null, true);
     }
-}
+
 
 function clearDate($data)
 {
@@ -662,3 +863,5 @@ function sendHelpAndSupport($chatId) {
 
     sendMessage($chatId, $message, $keyboard);
 }
+
+
