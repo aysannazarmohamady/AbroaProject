@@ -347,6 +347,42 @@ function handleProfileData($chatId, $message, $userId) {
                 sendMessage($chatId, "Please upload a file for your CV.");
             }
             break;
+        // New cases for editing individual profile fields
+        case 'edit_email':
+            $data[$userId]['email'] = $message;
+            sendMessage($chatId, "Your email has been updated.");
+            sendEditProfileMenu($chatId, $userId);
+            break;
+        case 'edit_phone':
+            $data[$userId]['phone'] = $message;
+            sendMessage($chatId, "Your phone number has been updated.");
+            sendEditProfileMenu($chatId, $userId);
+            break;
+        case 'edit_residence':
+            $data[$userId]['residence'] = $message;
+            sendMessage($chatId, "Your country of residence has been updated.");
+            sendEditProfileMenu($chatId, $userId);
+            break;
+        case 'edit_language_certificate':
+            $data[$userId]['language_certificate'] = $message;
+            sendMessage($chatId, "Your language certificate status has been updated.");
+            sendEditProfileMenu($chatId, $userId);
+            break;
+        case 'edit_field':
+            $data[$userId]['field'] = $message;
+            sendMessage($chatId, "Your field of study has been updated.");
+            sendEditProfileMenu($chatId, $userId);
+            break;
+        case 'edit_country':
+            $data[$userId]['country'] = $message;
+            sendMessage($chatId, "Your preferred country has been updated.");
+            sendEditProfileMenu($chatId, $userId);
+            break;
+        case 'edit_education_level':
+            $data[$userId]['education_level'] = $message;
+            sendMessage($chatId, "Your education level has been updated.");
+            sendEditProfileMenu($chatId, $userId);
+            break;
     }
     saveData($data);
 }
@@ -407,21 +443,42 @@ function sendCVUploadOption($chatId) {
 function viewEditProfile($chatId, $userId) {
     $data = loadData();
     if (isset($data[$userId])) {
-        $profile = $data[$userId];
-        $message = "Your Profile:\n\n";
-        $message .= "Email: " . ($profile['email'] ?? "Not set") . "\n";
-        $message .= "Phone: " . ($profile['phone'] ?? "Not set") . "\n";
-        $message .= "Country of Residence: " . ($profile['residence'] ?? "Not set") . "\n";
-        $message .= "Language Certificate: " . ($profile['language_certificate'] ?? "Not set") . "\n";
-        $message .= "Field of Study: " . ($profile['field'] ?? "Not set") . "\n";
-        $message .= "Preferred Country: " . ($profile['country'] ?? "Not set") . "\n";
-        $message .= "Education Level: " . ($profile['education_level'] ?? "Not set") . "\n";
-$message .= "CV: " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
-        $message .= "To edit your profile, select 'User Profile' from the main menu.";
-        sendMessage($chatId, $message);
+        sendEditProfileMenu($chatId, $userId);
     } else {
         sendMessage($chatId, "You haven't created a profile yet. Select 'User Profile' from the main menu to create one.");
     }
+}
+
+function sendEditProfileMenu($chatId, $userId) {
+    $data = loadData();
+    $profile = $data[$userId];
+    
+    $keyboard = [
+        "inline_keyboard" => [
+            [["text" => "Edit Email", "callback_data" => "edit_email"]],
+            [["text" => "Edit Phone", "callback_data" => "edit_phone"]],
+            [["text" => "Edit Country of Residence", "callback_data" => "edit_residence"]],
+            [["text" => "Edit Language Certificate", "callback_data" => "edit_language_certificate"]],
+            [["text" => "Edit Field of Study", "callback_data" => "edit_field"]],
+            [["text" => "Edit Preferred Country", "callback_data" => "edit_country"]],
+            [["text" => "Edit Education Level", "callback_data" => "edit_education_level"]],
+            [["text" => "Upload New CV", "callback_data" => "upload_cv"]],
+            [["text" => "Back to Main Menu", "callback_data" => "back_to_main"]]
+        ]
+    ];
+
+    $message = "Your Profile:\n\n";
+    $message .= "Email: " . ($profile['email'] ?? "Not set") . "\n";
+    $message .= "Phone: " . ($profile['phone'] ?? "Not set") . "\n";
+    $message .= "Country of Residence: " . ($profile['residence'] ?? "Not set") . "\n";
+    $message .= "Language Certificate: " . ($profile['language_certificate'] ?? "Not set") . "\n";
+    $message .= "Field of Study: " . ($profile['field'] ?? "Not set") . "\n";
+    $message .= "Preferred Country: " . ($profile['country'] ?? "Not set") . "\n";
+    $message .= "Education Level: " . ($profile['education_level'] ?? "Not set") . "\n";
+    $message .= "CV: " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
+    $message .= "Select a field to edit:";
+
+    sendMessage($chatId, $message, $keyboard);
 }
 
 function loadData() {
@@ -558,7 +615,6 @@ function searchGlobal($chatId, $userId, $message) {
     }
 }
 
-//خروجی نمایش
 function sendSearchResults($chatId, $results) {
     if (empty($results)) {
         sendMessage($chatId, "No opportunities found matching your profile. Try updating your profile or broadening your search criteria.");
@@ -614,16 +670,11 @@ function sendSearchResults($chatId, $results) {
             }
         }
 
-//        if (!empty($researcher['url'])) {
-//            $output .= "🌐 Website: <a href='" . htmlspecialchars($researcher['url'], ENT_QUOTES) . "'>Link</a>\n\n";
-        //}
-
         $output .= "🔗 <b>Online Profiles:</b>\n";
         $profiles = [
             'linkedin_link' => 'LinkedIn Supervisor Page',
             'scholar_link' => 'Google Scholar Supervisor Page',
             'researchgate_link' => 'ResearchGate Supervisor Page',
-            //'google_link' => 'Google'
         ];
 
         foreach ($profiles as $key => $name) {
@@ -631,13 +682,7 @@ function sendSearchResults($chatId, $results) {
                 $cleaned_string = stripslashes($researcher[$key]);
                 $links = json_decode($cleaned_string, true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($links) && !empty($links)) {
-                    //$output .= "🌐 <b>$name links:</b>\n";
                     $output .= "• <a href='" . htmlspecialchars($links[0], ENT_QUOTES) . "'>$name</a>\n";
-                    /*
-                    foreach ($links as $link) {
-                        $output .= "• <a href='" . htmlspecialchars($link, ENT_QUOTES) . "'>$name</a>\n";
-                    }
-                    */
                     $output .= "\n";
                 }
             }
@@ -679,7 +724,6 @@ function sendSearchResults($chatId, $results) {
     }
 }
 
-//خروجی سوپروایزر
 function sendSearchResultsSupervisor($chatId, $results) {
     if (empty($results)) {
         sendMessage($chatId, "No opportunities found matching your profile. Try updating your profile or broadening your search criteria.");
@@ -688,7 +732,6 @@ function sendSearchResultsSupervisor($chatId, $results) {
 
     foreach ($results as $researcher) {
         $output = "<b>👨‍🏫 Supervisor Information</b>\n\n";
-
 
         if (!empty($researcher['supervisors'])) {
             $cleaned_string = stripslashes($researcher['supervisors']);
@@ -745,16 +788,11 @@ function sendSearchResultsSupervisor($chatId, $results) {
             }
         }
 
-        //if (!empty($researcher['url'])) {
-            //$output .= "🌐 Website: <a href='" . htmlspecialchars//($researcher['url'], ENT_QUOTES) . "'>Link</a>\n\n";
-        }
-
         $output .= "🔗 <b>Online Profiles:</b>\n";
         $profiles = [
             'linkedin_link' => 'LinkedIn',
             'scholar_link' => 'Google Scholar',
             'researchgate_link' => 'ResearchGate',
-            //'google_link' => 'Google'
         ];
 
         foreach ($profiles as $key => $name) {
@@ -762,13 +800,7 @@ function sendSearchResultsSupervisor($chatId, $results) {
                 $cleaned_string = stripslashes($researcher[$key]);
                 $links = json_decode($cleaned_string, true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($links) && !empty($links)) {
-                    //$output .= "🌐 <b>$name links:</b>\n";
                     $output .= "• <a href='" . htmlspecialchars($links[0], ENT_QUOTES) . "'>$name</a>\n";
-                    /*
-                    foreach ($links as $link) {
-                        $output .= "• <a href='" . htmlspecialchars($link, ENT_QUOTES) . "'>$name</a>\n";
-                    }
-                    */
                     $output .= "\n";
                 }
             }
@@ -808,7 +840,7 @@ function sendSearchResultsSupervisor($chatId, $results) {
 
         sendMessage($chatId, $output, null, true);
     }
-
+}
 
 function clearDate($data)
 {
@@ -864,4 +896,37 @@ function sendHelpAndSupport($chatId) {
     sendMessage($chatId, $message, $keyboard);
 }
 
+// Handle callback queries for inline keyboards
+if (isset($updateArray['callback_query'])) {
+    $callbackQuery = $updateArray['callback_query'];
+    $chatId = $callbackQuery['message']['chat']['id'];
+    $userId = $callbackQuery['from']['id'];
+    $data = $callbackQuery['data'];
 
+    switch ($data) {
+        case 'edit_email':
+        case 'edit_phone':
+        case 'edit_residence':
+        case 'edit_language_certificate':
+        case 'edit_field':
+        case 'edit_country':
+        case 'edit_education_level':
+            $fieldName = str_replace('edit_', '', $data);
+            sendMessage($chatId, "Please enter your new $fieldName:");
+            $userData = loadData();
+            $userData[$userId]['step'] = $data;
+            saveData($userData);
+            break;
+        case 'upload_cv':
+            sendMessage($chatId, "Please upload your new CV file.");
+            $userData = loadData();
+            $userData[$userId]['step'] = 9;  // Reuse the CV upload step
+            saveData($userData);
+            break;
+        case 'back_to_main':
+            sendMainMenu($chatId);
+            break;
+    }
+}
+
+?>
