@@ -68,15 +68,6 @@ if (isset($updateArray['message'])) {
     }
 }
 
-function sendMessage1($chatId, $message, $keyboard = null) {
-    global $apiUrl;
-    $url = $apiUrl . "sendMessage?chat_id=" . $chatId . "&text=" . urlencode($message);
-    if ($keyboard) {
-        $url .= "&reply_markup=" . urlencode(json_encode($keyboard));
-    }
-    file_get_contents($url);
-}
-
 function sendMessage($chatId, $message, $keyboard = null, $parseHtml = false) {
     global $apiUrl;
     $url = $apiUrl . "sendMessage?chat_id=" . $chatId . "&text=" . urlencode($message);
@@ -320,7 +311,7 @@ function handleProfileData($chatId, $message, $userId) {
             $data[$userId]['step'] = 7;
             sendEducationLevelKeyboard($chatId);
             break;
-        case 7:
+case 7:
             $data[$userId]['education_level'] = $message;
             $data[$userId]['step'] = 8;
             sendCVUploadOption($chatId);
@@ -347,7 +338,6 @@ function handleProfileData($chatId, $message, $userId) {
                 sendMessage($chatId, "Please upload a file for your CV.");
             }
             break;
-        // New cases for editing individual profile fields
         case 'edit_email':
             $data[$userId]['email'] = $message;
             sendMessage($chatId, "Your email has been updated.");
@@ -425,8 +415,6 @@ function sendEducationLevelKeyboard($chatId) {
         "resize_keyboard" => true
     ];
     sendMessage($chatId, "Please choose your preferred education level:", $keyboard);
-    
-    // Notify the user that currently only PhD opportunities are available
     sendMessage($chatId, "⚠️ Currently, only PhD opportunities are available!");
 }
 
@@ -467,18 +455,18 @@ function sendEditProfileMenu($chatId, $userId) {
         ]
     ];
 
-    $message = "Your Profile:\n\n";
-    $message .= "Email: " . ($profile['email'] ?? "Not set") . "\n";
-    $message .= "Phone: " . ($profile['phone'] ?? "Not set") . "\n";
-    $message .= "Country of Residence: " . ($profile['residence'] ?? "Not set") . "\n";
-    $message .= "Language Certificate: " . ($profile['language_certificate'] ?? "Not set") . "\n";
-    $message .= "Field of Study: " . ($profile['field'] ?? "Not set") . "\n";
-    $message .= "Preferred Country: " . ($profile['country'] ?? "Not set") . "\n";
-    $message .= "Education Level: " . ($profile['education_level'] ?? "Not set") . "\n";
-    $message .= "CV: " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
+    $message = "<b>Your Profile</b>\n\n";
+    $message .= "📧 <b>Email:</b> " . ($profile['email'] ?? "Not set") . "\n";
+    $message .= "📱 <b>Phone:</b> " . ($profile['phone'] ?? "Not set") . "\n";
+    $message .= "🏠 <b>Country of Residence:</b> " . ($profile['residence'] ?? "Not set") . "\n";
+    $message .= "🗣️ <b>Language Certificate:</b> " . ($profile['language_certificate'] ?? "Not set") . "\n";
+    $message .= "🎓 <b>Field of Study:</b> " . ($profile['field'] ?? "Not set") . "\n";
+    $message .= "🌍 <b>Preferred Country:</b> " . ($profile['country'] ?? "Not set") . "\n";
+    $message .= "📚 <b>Education Level:</b> " . ($profile['education_level'] ?? "Not set") . "\n";
+    $message .= "📄 <b>CV:</b> " . (isset($profile['cv_file_id']) ? "Uploaded" : "Not uploaded") . "\n\n";
     $message .= "Select a field to edit:";
 
-    sendMessage($chatId, $message, $keyboard);
+    sendMessage($chatId, $message, $keyboard, true);
 }
 
 function loadData() {
@@ -681,8 +669,7 @@ function sendSearchResults($chatId, $results) {
             if (!empty($researcher[$key])) {
                 $cleaned_string = stripslashes($researcher[$key]);
                 $links = json_decode($cleaned_string, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($links) && !empty($links)) {
-                    $output .= "• <a href='" . htmlspecialchars($links[0], ENT_QUOTES) . "'>$name</a>\n";
+                if (json_last_error() === JSON_ERROR_NONE && is_array($links) && !empty($links)) {$output .= "• <a href='" . htmlspecialchars($links[0], ENT_QUOTES) . "'>$name</a>\n";
                     $output .= "\n";
                 }
             }
@@ -928,5 +915,4 @@ if (isset($updateArray['callback_query'])) {
             break;
     }
 }
-
 ?>
