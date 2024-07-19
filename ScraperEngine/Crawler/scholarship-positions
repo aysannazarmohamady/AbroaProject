@@ -1,3 +1,11 @@
+!pip install cfscrape
+###
+pip install --upgrade urllib3
+###
+pip install --upgrade urllib3==1.26.8
+###
+
+
 import requests
 from bs4 import BeautifulSoup
 import time
