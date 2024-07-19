@@ -1,0 +1,181 @@
+import requests
+from bs4 import BeautifulSoup
+import time
+import pandas as pd
+import json
+
+def fetch_page(url, max_retries=3):
+    for _ in range(max_retries):
+        try:
+            response = requests.get(url, allow_redirects=True, timeout=10)
+            response.raise_for_status()
+            return BeautifulSoup(response.text, 'html.parser')
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching {url}: {e}")
+            time.sleep(5)
+    return None
+
+def decode_email(encoded_email):
+    email = ""
+    key = int(encoded_email[:2], 16)
+    for i in range(2, len(encoded_email), 2):
+        char_code = int(encoded_email[i:i + 2], 16) ^ key
+        email += chr(char_code)
+    return email
+
+def extract_emails(soup):
+    emails = []
+    email_spans = soup.select('span.__cf_email__[data-cfemail]')
+    for span in email_spans:
+        encoded_email = span['data-cfemail']
+        decoded_email = decode_email(encoded_email)
+        if decoded_email:
+            emails.append(decoded_email)
+    return emails if emails else ['No emails found']
+
+def extract_info(soup, field):
+    tag = soup.select_one(f'li:has(strong:contains("{field}"))')
+    if tag:
+        return tag.get_text(strip=True).replace(f'{field}:', '').strip()
+    return f'{field} not found'
+
+def extract_application_deadline(soup):
+    deadline_tag = soup.select_one('p:has(strong:contains("Application Deadline"))')
+    if deadline_tag:
+        return "deadline: " + deadline_tag.get_text(strip=True).replace('Application Deadline:', '').strip()
+    return 'deadline: Application Deadline not found'
+
+def extract_apply_now_link(soup):
+    apply_now_tag = soup.select_one('h2 a:contains("Apply Now")')
+    if apply_now_tag and 'href' in apply_now_tag.attrs:
+        return apply_now_tag['href']
+    return 'Apply Now link not found'
+
+def extract_overview(soup):
+    entry_content_div = soup.find('div', class_='entry-content')
+    if entry_content_div:
+        p_tag = entry_content_div.find('p')
+        if p_tag:
+            return p_tag.get_text(strip=True)
+    return 'Overview not found'
+
+def extract_eligibility(soup):
+    eligibility_tag = soup.select_one('h2 strong:contains("Eligibility")')
+    if eligibility_tag:
+        eligibility_details = []
+        ul_tag = eligibility_tag.find_next('ul')
+        if ul_tag:
+            li_tags = ul_tag.find_all('li')
+            for li in li_tags:
+                eligibility_details.append(li.get_text(strip=True))
+        return eligibility_details
+    return ['Eligibility details not found']
+
+def extract_supervisors(soup):
+    text = soup.get_text()
+    supervisors = []
+    words = text.split()
+    for i in range(len(words)):
+        if words[i] == 'Dr.' and i + 2 < len(words):
+            supervisors.append(f"{words[i + 1]} {words[i + 2]}")
+    return supervisors if supervisors else ['Supervisors not found']
+
+def extract_titles_links_and_details(base_url, page_count):
+    all_data = []
+    position = 1
+    for i in range(1, page_count + 1):
+        url = base_url.format(i)
+        soup = fetch_page(url)
+        if not soup:
+            print(f"Failed to fetch page {i}")
+            continue
+
+        articles = soup.find_all('article', id=lambda x: x and x.startswith('post-'))
+
+        for article in articles:
+            title_tag = article.select_one('header > h1 > a')
+            title = title_tag.get_text(strip=True) if title_tag else 'No title found'
+
+            link_tag = article.select_one('div > p:nth-child(3) > a')
+            link = link_tag['href'] if link_tag else 'No link found'
+
+            details = {
+                'university': 'No university information available',
+                'country': 'No country information available',
+                'level': 'No level information available',
+                'branch': 'No branch information available',
+                'extra': 'No deadline information available',
+                'institution_link': 'No Apply Now link available',
+                'funds': 'No award information available',
+                'overview': 'No overview available',
+                'email': 'No emails found',
+                'supervisors': 'Supervisors not found',
+                'title': title,
+                'url': link,
+                'google_link': f"https://www.google.com/search?q={title.replace(' ', '+')}"
+            }
+
+            if link != 'No link found':
+                details_soup = fetch_page(link)
+                if details_soup:
+                    details['email'] = ', '.join(extract_emails(details_soup))
+                    details['extra'] = extract_application_deadline(details_soup)
+                    details['institution_link'] = extract_apply_now_link(details_soup)
+                    details['overview'] = extract_overview(details_soup)
+                    details['university'] = extract_info(details_soup, 'University or Organization')
+                    details['country'] = extract_info(details_soup, 'The award can be taken in')
+                    details['level'] = extract_info(details_soup, 'Course Level')
+                    details['branch'] = extract_info(details_soup, 'Department')
+                    details['funds'] = extract_info(details_soup, 'Award')
+                    details['extra'] += ' | ' + ' | '.join(extract_eligibility(details_soup))
+                    details['supervisors'] = ', '.join(extract_supervisors(details_soup))
+
+            all_data.append(details)
+
+            position += 1
+
+        time.sleep(2)
+
+    return pd.DataFrame(all_data)
+
+def send_to_api(data):
+    url = 'https://jet.aysan.dev/api_v2.php'
+    payload = {
+        'action': 'insert',
+        'data': data
+    }
+    response = requests.post(url, json=payload)
+    return response.json()
+
+# Main execution
+base_url = 'https://scholarship-positions.com/category/phd-scholarships-positions/page/{}/'
+page_count = 9
+
+df = extract_titles_links_and_details(base_url, page_count)
+
+# Iterate through the DataFrame and send each row to the API
+for index, row in df.iterrows():
+    data = {
+        'level': row['level'],
+        'country': row['country'],
+        'university': row['university'],
+        'branch': row['branch'],
+        'title': row['title'],
+        'overview': row['overview'],
+        'supervisors': row['supervisors'],
+        'tags': '',  # Add tags if available
+        'email': row['email'],
+        'url': row['url'],
+        'linkedin_link': '',  # Add LinkedIn link if available
+        'scholar_link': '',  # Add Scholar link if available
+        'researchgate_link': '',  # Add ResearchGate link if available
+        'google_link': row['google_link'],
+        'institution_link': row['institution_link'],
+        'funds': row['funds'],
+        'extra': row['extra']
+    }
+
+    result = send_to_api(data)
+    print(f"Row {index + 1}: {result}")
+
+print("Data transfer completed.")
