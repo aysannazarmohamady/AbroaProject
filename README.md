@@ -42,7 +42,7 @@ Users interact with the bot through Telegram. The bot provides a menu-based inte
 
 ## API Integration
 
-The bot integrates with an external API (https://jet.aysan.dev/api_v2.php) for searching and retrieving academic opportunities.
+The bot integrates with an external API (https://jet.aysan.dev/api_v2.html) for searching and retrieving academic opportunities.
 
 ## Security Considerations
 
