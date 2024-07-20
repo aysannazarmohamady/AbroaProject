@@ -216,67 +216,6 @@ for page in range(START_PAGE, END_PAGE + 1):
 
         time.sleep(2)  # Delay to prevent too frequent requests
 
-'''
-#start comment by Javad
-
-# Create DataFrame
-df = pd.DataFrame(data)
-
-# Display the first few rows of the DataFrame
-print(df.head())
-
-# Save DataFrame to CSV file
-df.to_csv('academic_transfer_jobs.csv', index=False)
-
-# API endpoint
-url = 'https://jet.aysan.dev/api_v2.php'
-
-# Iterate through each row in the DataFrame
-for index, row in df.iterrows():
-    data = {
-        'action': 'insert',
-        'data': {
-            'level': row['level'],
-            'country': row['country'],
-            'university': row['university'],
-            'title': row['title'],
-            'overview': row['overview'],
-            'supervisors': row['supervisor'],
-            'email': row['email'],
-            'url': row['url'],
-            'linkedin_link': row['linkedin_link'],
-            'scholar_link': row['scholar_link'],
-            'researchgate_link': row['researchgate_link'],
-            'google_link': row['google_link'],
-            'institution_link': row['institution_link'],
-            'funds': row['funds'],
-            'extra': row['extra']
-        }
-    }
-
-    # Remove None values
-    data['data'] = {k: v for k, v in data['data'].items() if v is not None}
-
-    try:
-        # Send POST request to the API
-        response = requests.post(url, json=data)
-
-        # Check if the request was successful
-        response.raise_for_status()
-
-        # Try to parse the JSON response
-        result = response.json()
-
-        # Print the result
-        print(f"Row {index + 1}: {result}")
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed for row {index + 1}: {e}")
-        print(f"Response content: {response.text}")
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error for row {index + 1}: {e}")
-        print(f"Response content: {response.text}")
-#end comment by Javad
-'''
 print("Data insertion complete.")
 
 
