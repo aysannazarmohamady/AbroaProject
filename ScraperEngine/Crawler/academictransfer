@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import re
 import time
 import pandas as pd
+import json
+import urllib.parse
 
 # Initial settings
 BASE_URL = 'https://www.academictransfer.com/en/jobs/?vacancy_type=scientific&q=&function_types=1&order=&page='
@@ -25,6 +27,49 @@ def extract_links(google_search_link, domain):
         if a_tag and 'href' in a_tag.attrs and domain in a_tag['href']:
             links.append(a_tag['href'])
     return links
+
+def savedatatoapi(data):
+  url = 'https://jet.aysan.dev/api_v2.php'
+
+
+  # Extract the first (and only) item from the list
+  item = data[0]
+
+
+  api_data = {
+        'title': clean_string(item.get('title', '')),
+        'country': clean_string(item.get('country', '')),
+        'university': clean_string(item.get('university', '')),
+        #'url': urllib.parse.quote(clean_string(item.get('url', ''))),
+        'funds': item.get('funds'),
+        'level': clean_string(item.get('level', '')),
+        'extra': clean_string(item.get('extra', '')),
+        'overview': clean_string(item.get('overview', '')),
+        'email': clean_string(item.get('email', '')),
+        'supervisors': clean_string(item.get('supervisor', '')),
+        'linkedin_link': clean_string(item.get('linkedin_link', '')),
+        'scholar_link': clean_string(item.get('scholar_link', '')),
+        'researchgate_link': clean_string(item.get('researchgate_link', '')),
+        'google_link': clean_string(item.get('google_link', '')),
+        'institution_link': clean_string(item.get('institution_link', ''))
+    }
+    # حذف فیلدهایی که مقدار خالی دارند
+  api_data = {k: v for k, v in api_data.items() if v not in (None, "")}
+
+  data = {
+    'action': 'insert',
+    'data': api_data
+  }
+  print(data)
+  response = requests.post(url, json=data)
+  result = response.json()
+
+  return(result)
+
+def clean_string(s):
+    if not isinstance(s, str):
+        return s
+    return s.replace('\n', ' ').replace('\r', '').strip()
 
 def extract_job_details(job_url):
     job_response = requests.get(job_url)
@@ -79,8 +124,10 @@ def extract_job_details(job_url):
         emails.extend(re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text))
 
         # Add additional information
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        additional_info.extend([s.strip() for s in sentences if 'contact' in s.lower() or '@' in s or any(title in s for title in ['Dr.', 'dr.', 'Prof.', 'Professor'])])
+        #sentences = re.split(r'(?<=[.!?])\s+', text)
+        #additional_info.extend([s.strip() for s in sentences if 'contact' in s.lower() or '@' in s or any(title in s for title in ['Dr.', 'dr.', 'Prof.', 'Professor'])])
+        # اضافه کردن کل متن به additional_info
+        additional_info.append(text) 
 
     # Remove duplicates
     emails = list(set(emails))
@@ -163,7 +210,14 @@ for page in range(START_PAGE, END_PAGE + 1):
 
         data.append(job_data)
 
+        result = savedatatoapi(data)
+
+        print(result)
+
         time.sleep(2)  # Delay to prevent too frequent requests
+
+'''
+#start comment by Javad
 
 # Create DataFrame
 df = pd.DataFrame(data)
@@ -173,3 +227,56 @@ print(df.head())
 
 # Save DataFrame to CSV file
 df.to_csv('academic_transfer_jobs.csv', index=False)
+
+# API endpoint
+url = 'https://jet.aysan.dev/api_v2.php'
+
+# Iterate through each row in the DataFrame
+for index, row in df.iterrows():
+    data = {
+        'action': 'insert',
+        'data': {
+            'level': row['level'],
+            'country': row['country'],
+            'university': row['university'],
+            'title': row['title'],
+            'overview': row['overview'],
+            'supervisors': row['supervisor'],
+            'email': row['email'],
+            'url': row['url'],
+            'linkedin_link': row['linkedin_link'],
+            'scholar_link': row['scholar_link'],
+            'researchgate_link': row['researchgate_link'],
+            'google_link': row['google_link'],
+            'institution_link': row['institution_link'],
+            'funds': row['funds'],
+            'extra': row['extra']
+        }
+    }
+
+    # Remove None values
+    data['data'] = {k: v for k, v in data['data'].items() if v is not None}
+
+    try:
+        # Send POST request to the API
+        response = requests.post(url, json=data)
+
+        # Check if the request was successful
+        response.raise_for_status()
+
+        # Try to parse the JSON response
+        result = response.json()
+
+        # Print the result
+        print(f"Row {index + 1}: {result}")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed for row {index + 1}: {e}")
+        print(f"Response content: {response.text}")
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error for row {index + 1}: {e}")
+        print(f"Response content: {response.text}")
+#end comment by Javad
+'''
+print("Data insertion complete.")
+
+
