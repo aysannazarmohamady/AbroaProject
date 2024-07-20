@@ -17,6 +17,7 @@ if (isset($updateArray['message'])) {
         exit;
     }
 
+
     switch ($message) {
         case "/start":
             sendMainMenu($chatId);
@@ -33,9 +34,6 @@ if (isset($updateArray['message'])) {
         case "👤 User Profile":
             requestUserProfile($chatId, $userId);
             break;
-        case "🤖 AI Assistant":
-            sendAIAssistantMenu($chatId);
-            break;
         case "❓ Help and Support":
             sendHelpAndSupport($chatId);
             break;
@@ -44,14 +42,6 @@ if (isset($updateArray['message'])) {
             break;
         case "🔙 Back to Main Menu":
             sendMainMenu($chatId);
-            break;
-        case "🧠 Prompting":
-            sendPromptingMenu($chatId);
-            break;
-        case "📝 Resume Writing":
-        case "✉️ Cover Letter Writing":
-        case "📧 Email Writing":
-            handlePromptingOption($chatId, $message);
             break;
         case "🧑‍🏫 Search Supervisors":
             handleSearchSupervisors($chatId);
@@ -87,7 +77,7 @@ function sendMainMenu($chatId) {
     $keyboard = [
         "keyboard" => [
             [["text" => "🔍 Search Opportunities"], ["text" => "👤 User Profile"]],
-            [["text" => "🤖 AI Assistant"], ["text" => "❓ Help and Support"]],
+            [["text" => "❓ Help and Support"]],
             [["text" => "📋 View/Edit Profile"], ["text" => "🧑‍🏫 Search Supervisors"]]
         ],
         "resize_keyboard" => true
@@ -131,102 +121,6 @@ function requestGlobalSearchKeyword($chatId, $userId,$message) {
     $data = loadData();
     $data[$userId]['step'] = 'global_search';
     saveData($data);
-}
-
-function sendAIAssistantMenu($chatId) {
-    $keyboard = [
-        "keyboard" => [
-            [["text" => "🧠 Prompting"]],
-            [["text" => "🔙 Back to Main Menu"]]
-        ],
-        "resize_keyboard" => true
-    ];
-    sendMessage($chatId, "AI Assistant Menu:", $keyboard);
-}
-
-function sendPromptingMenu($chatId) {
-    $keyboard = [
-        "keyboard" => [
-            [["text" => "📝 Resume Writing"], ["text" => "✉️ Cover Letter Writing"]],
-            [["text" => "📧 Email Writing"]],
-            [["text" => "🔙 Back to Main Menu"]]
-        ],
-        "resize_keyboard" => true
-    ];
-    sendMessage($chatId, "Prompting Menu:", $keyboard);
-}
-
-function handlePromptingOption($chatId, $option) {
-    switch ($option) {
-        case "📝 Resume Writing":
-            $message = "I have a job posting for the role of [Job Title] at [Company Name]. Please review the key requirements and responsibilities listed in the job description below, and then rewrite/update my existing resume to highlight the most relevant skills, experiences, and accomplishments that align with what the employer is looking for in an ideal candidate.
-
-[Paste the full job description text here]
-
-Here is my current resume:
-[Paste your existing resume content here]
-
-When rewriting my resume, please:
-- Update the resume summary/objective to speak directly to this role
-- Reorder and tweak the experience/skills sections to prioritize the most relevant qualifications 
-- Use keyword phrases pulled from the job description where applicable
-- Quantify achievements with metrics/numbers where possible
-- Keep the resume concise, focusing on only the most pertinent details for this role
-
-The goal is to create a tailored version of my resume that clearly showcases why I'm a strong fit for this particular position based on the stated requirements. Please maintain a professional tone throughout.";
-            sendMessage($chatId, $message);
-            break;
-        case "✉️ Cover Letter Writing":
-            $message = "Please write a cover letter for an academic position using the following information:
-Applicant's Resume:
-[Insert full resume of the applicant here]
-Academic Position Description:
-[Insert full description of the academic position here]
-Please write a compelling cover letter that:
-Addresses the hiring committee or department chair
-Expresses enthusiasm for the position
-Highlights how the applicant's qualifications match the job requirements
-Demonstrates knowledge of and interest in the institution
-Explains how the applicant's research and teaching experience align with the position
-Concludes with a strong statement of interest and availability for an interview
-The cover letter should be professional, concise, and tailored to the specific position and institution. It should be approximately 1 page in length (3-4 paragraphs).
-The system should:
-Extract key information from the resume, including educational background, research experience, publications, teaching experience, awards, and technical skills
-Identify key requirements and preferences from the position description
-Extract information about the institution from the position description
-Use this information to write a personalized and relevant cover letter";
-            sendMessage($chatId, $message);
-            break;
-        case "📧 Email Writing":
-            $message = "
-**Subject Options:**
-
-1. Application for PhD Position in [Specific Field]
-2. Inquiry About PhD Supervision in [Specific Research Area]
-3. Interest in PhD Research Under Your Supervision
-4. Potential PhD Research Collaboration
-
-**Body:**
-
-Dear Professor [Supervisor's Last Name],
-
-My name is [Your Full Name], and I am currently [Your Current Position/Status] at [Your Current Institution or Workplace]. I am writing to express my interest in pursuing a PhD under your supervision in the field of [Field of Study].
-
-I have a strong background in [Your Relevant Experience or Education], where I [briefly describe your relevant experience or education]. I am particularly interested in your work on [Mention Specific Research or Publications of the Supervisor] and would like to contribute to this area through my research.
-
-Attached to this email, you will find my resume and a brief research proposal that outlines my ideas and how they align with your current research projects. I would be honored to discuss this opportunity further and explore how my background and interests could contribute to your team.
-
-Thank you for considering my application. I look forward to the possibility of working with you and contributing to your research.
-
-Sincerely,
-
-[Your Full Name]  
-[Your Contact Information]  
-[Your LinkedIn Profile, if applicable]  
-[Attachment: Resume, Research Proposal]";
-            sendMessage($chatId, $message);
-            break;
-    }
 }
 
 function requestUserProfile($chatId, $userId) {
@@ -328,6 +222,19 @@ case 7:
             }
             break;
         case 9:
+            if (isset($updateArray['message']['document'])) {
+                $data[$userId]['cv_file_id'] = $updateArray['message']['document']['file_id'];
+                unset($data[$userId]['step']);
+                saveData($data);
+                sendMessage($chatId, "Your CV has been uploaded and your profile has been updated.");
+                sendMainMenu($chatId);
+            } else {
+                sendMessage($chatId, "Please upload a file for your CV.");
+                sendMainMenu($chatId);
+            }
+            break;
+            
+        case 10:
             if (isset($updateArray['message']['document'])) {
                 $data[$userId]['cv_file_id'] = $updateArray['message']['document']['file_id'];
                 unset($data[$userId]['step']);
@@ -869,7 +776,6 @@ function sendHelpAndSupport($chatId) {
              . "This bot helps you search for academic opportunities and manage your profile. Here's a quick guide:\n\n"
              . "🔍 Search Opportunities: Find opportunities based on your profile or perform a new search.\n"
              . "👤 User Profile: Set up or edit your personal information.\n"
-             . "🤖 AI Assistant: Get help with resume writing, cover letters, and emails.\n"
              . "📋 View/Edit Profile: Review or update your existing profile.\n"
              . "🧑‍🏫 Search Supervisors: Find potential supervisors based on your research interests.\n\n"
              . "We're here to help you in your academic journey!";
@@ -913,6 +819,7 @@ if (isset($updateArray['callback_query'])) {
         case 'back_to_main':
             sendMainMenu($chatId);
             break;
+   
     }
 }
 ?>
