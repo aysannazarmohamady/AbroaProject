@@ -1,5 +1,5 @@
 <?php
-$token = "7011288395:AAGw0LntfB4s3ItqaT_buL4eIusRF2TZUi8";
+$token = "7246212096:AAEKY1RJSrLbYKPCV_cBteJ-7cBtNr5drec";
 $apiUrl = "https://api.telegram.org/bot$token/";
 $channelUsername = "@JetApply";
 $dataFile = "user_data.json";
@@ -16,7 +16,6 @@ if (isset($updateArray['message'])) {
         inviteToChannel($chatId);
         exit;
     }
-
 
     switch ($message) {
         case "/start":
@@ -82,7 +81,9 @@ function sendMainMenu($chatId) {
         ],
         "resize_keyboard" => true
     ];
-    sendMessage($chatId, "Please choose an option from the main menu:", $keyboard);
+    sendMessage($chatId, "Hello! Welcome to the Abroadin bot! 🌟
+
+We're here to support you on your academic journey. Please choose an option from the main menu and let's get started together! 😊", $keyboard);
 }
 
 function sendSearchOpportunitiesMenu($chatId) {
@@ -772,17 +773,20 @@ function LatestPosts($chatId)
 }
 
 function sendHelpAndSupport($chatId) {
-    $message = "Welcome to the Help and Support section!\n\n"
-             . "This bot helps you search for academic opportunities and manage your profile. Here's a quick guide:\n\n"
-             . "🔍 Search Opportunities: Find opportunities based on your profile or perform a new search.\n"
-             . "👤 User Profile: Set up or edit your personal information.\n"
-             . "📋 View/Edit Profile: Review or update your existing profile.\n"
-             . "🧑‍🏫 Search Supervisors: Find potential supervisors based on your research interests.\n\n"
-             . "We're here to help you in your academic journey!";
+    $message = "Welcome to the Help and Support section of the Abroadin Bot!
+
+Our mission is to make your journey to find academic opportunities and connect with potential supervisors as seamless as possible. Here’s a quick guide to get you started:
+
+🔍 Search Opportunities: Discover academic programs and positions tailored to your profile or start a new search based on your preferences.
+👤 User Profile: Set up or update your personal information to get personalized recommendations.
+📋 View/Edit Profile: Review or make changes to your existing profile to keep your information up-to-date.
+🧑‍🏫 Search Supervisors: Find potential supervisors aligned with your research interests to advance your academic career.
+
+We're here to support you in your academic journey and help you achieve your goals. If you have any questions or need further assistance, feel free to reach out.";
 
     $keyboard = [
         "inline_keyboard" => [
-            [["text" => "Contact Support", "url" => "https://t.me/Aysan_dev"]]
+            [["text" => "Contact Support", "url" => "https://zil.ink/abroadin"]]
         ]
     ];
 
