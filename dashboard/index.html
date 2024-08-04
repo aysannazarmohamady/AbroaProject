@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abroadin Bot Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <aside>
+            <div class="logo">
+                <img src="logo.png" alt="Abroadin Bot Logo">
+                <h2>Abroadin Bot</h2>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#"><i class="fas fa-users"></i> Users</a></li>
+                    <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main>
+            <header>
+                <h1>Admin Dashboard</h1>
+                <div class="user-info">
+                    <img src="admin-avatar.jpg" alt="Admin Avatar" class="avatar">
+                    <span>Welcome, Admin</span>
+                </div>
+            </header>
+            <section class="stats">
+                <div class="stat-card">
+                    <i class="fas fa-users"></i>
+                    <div>
+                        <h3>Total Users</h3>
+                        <p class="stat-number" id="totalUsers">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-user-check"></i>
+                    <div>
+                        <h3>Active Profiles</h3>
+                        <p class="stat-number" id="activeProfiles">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-user-plus"></i>
+                    <div>
+                        <h3>New Users (30 Days)</h3>
+                        <p class="stat-number" id="newUsers">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-file-upload"></i>
+                    <div>
+                        <h3>CV Uploads</h3>
+                        <p class="stat-number" id="cvUploads">0</p>
+                    </div>
+                </div>
+            </section>
+            <section class="charts">
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <h3>User Distribution by Country</h3>
+                        <canvas id="countryChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Distribution by Field of Study</h3>
+                        <canvas id="fieldOfStudyChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Distribution by Education Level</h3>
+                        <canvas id="educationLevelChart"></canvas>
+                    </div>
+                </div>
+            </section>
+            <section class="user-table">
+                <h3>User Information</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Residence</th>
+                            <th>Language Certificate</th>
+                            <th>Field of Study</th>
+                            <th>Preferred Country</th>
+                            <th>Education Level</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <!-- User data will be populated here -->
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
