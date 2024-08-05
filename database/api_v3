@@ -1,0 +1,245 @@
+<?php
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, DELETE");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+// Database connection details
+$host = '185.126.10.141';
+$dbname = 'aysan_newdb';
+$username = 'aysan_jetdbuser';
+$password = '6f5qg6i955wx';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
+}
+//تغییرش بده به این شکل که اول تمام دیتاهای کشور و سطح تحصیلی رو بیار و بعد توی یه حلقه دونه دونه چک کن که کلمه کلیدیت توی تایتل یا رنچ یا اورویو باشه
+// Updated searchRecords function
+function searchRecords($pdo, $field, $country, $education_level) {
+    $query = "SELECT * FROM researchers WHERE 
+              (title LIKE :field OR branch LIKE :field OR overview LIKE :field)
+              AND country = :country 
+              AND level = :education_level";
+    
+    $params = [
+        ':field' => "%$field%",
+        ':country' => $country,
+        ':education_level' => $education_level
+    ];
+
+    try {
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // You might want to log the error here
+        return false;
+    }
+}
+
+// Updated searchRecordsAll function
+function searchRecordsAll($pdo, $keyword) {
+    $query = "SELECT * FROM researchers WHERE 
+              title LIKE :keyword OR 
+              branch LIKE :keyword OR 
+              overview LIKE :keyword 
+              LIMIT 15";
+    
+    $params = [':keyword' => "%$keyword%"];
+
+    try {
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // You might want to log the error here
+        return false;
+    }
+}
+
+// Updated searchSupervisors function
+function searchSupervisors($pdo, $keyword) {
+    $query = "SELECT DISTINCT supervisors FROM researchers WHERE 
+              title LIKE :keyword OR 
+              branch LIKE :keyword OR 
+              overview LIKE :keyword OR 
+              tags LIKE :keyword";
+    
+    $params = [':keyword' => "%$keyword%"];
+
+    try {
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        // You might want to log the error here
+        return false;
+    }
+}
+
+// Function to get latest posts
+function getLatestPosts($pdo, $limit = 10) {
+    $query = "SELECT * FROM researchers ORDER BY created_at DESC LIMIT :limit";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to insert a new record
+function insertRecord($pdo, $data) {
+    $fields = implode(", ", array_keys($data));
+    $placeholders = ":" . implode(", :", array_keys($data));
+    
+    $query = "INSERT INTO researchers ($fields) VALUES ($placeholders)";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($data);
+    return $pdo->lastInsertId();
+}
+
+// Function to insert multiple records
+function insertMultipleRecords($pdo, $dataArray) {
+    $pdo->beginTransaction();
+    
+    try {
+        foreach ($dataArray as $data) {
+            insertRecord($pdo, $data);
+        }
+        $pdo->commit();
+        return true;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return false;
+    }
+}
+
+// Function to delete a record
+function deleteRecord($pdo, $id) {
+    $query = "DELETE FROM researchers WHERE id = :id";
+    $stmt = $pdo->prepare($query);
+    return $stmt->execute([':id' => $id]);
+}
+
+// Function to delete multiple records
+function deleteMultipleRecords($pdo, $ids) {
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $query = "DELETE FROM researchers WHERE id IN ($placeholders)";
+    $stmt = $pdo->prepare($query);
+    return $stmt->execute($ids);
+}
+
+// Function to update a record
+function updateRecord($pdo, $id, $data) {
+    $setClause = implode(", ", array_map(function($key) {
+        return "$key = :$key";
+    }, array_keys($data)));
+    
+    $query = "UPDATE researchers SET $setClause WHERE id = :id";
+    $stmt = $pdo->prepare($query);
+    $data[':id'] = $id;
+    return $stmt->execute($data);
+}
+
+// Function to update multiple records
+function updateMultipleRecords($pdo, $dataArray) {
+    $pdo->beginTransaction();
+    
+    try {
+        foreach ($dataArray as $data) {
+            $id = $data['id'];
+            unset($data['id']);
+            updateRecord($pdo, $id, $data);
+        }
+        $pdo->commit();
+        return true;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return false;
+    }
+}
+
+function logApiActivity($pdo, $action, $input, $result) {
+    $query = "INSERT INTO api_logs (action, input, result, ip) VALUES (:action, :input, :result, :ip)";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([
+        ':action' => $action,
+        ':input' => json_encode($input),
+        ':result' => json_encode($result),
+        ':ip' => $_SERVER['REMOTE_ADDR']
+    ]);
+}
+
+// API endpoint
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $action = $input['action'] ?? '';
+    
+    switch ($action) {
+        case 'search':
+            $result = searchRecords($pdo, $input['field'], $input['country'], $input['education_level']);
+            logApiActivity($pdo, 'search', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'all':
+            $result = searchRecordsAll($pdo, $input['keyword']);
+            logApiActivity($pdo, 'all', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'searchSupervisors':
+            $result = searchSupervisors($pdo, $input['keyword']);
+            logApiActivity($pdo, 'searchSupervisors', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'getLatestPosts':
+            $limit = $input['limit'] ?? 10;
+            if($limit > 20) $limit = 20;
+            $result = getLatestPosts($pdo, $limit);
+            logApiActivity($pdo, 'getLatestPosts', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'insert':
+            $id = insertRecord($pdo, $input['data']);
+            $result = ['success' => true, 'id' => $id];
+            logApiActivity($pdo, 'insert', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'insertMultiple':
+            $success = insertMultipleRecords($pdo, $input['data']);
+            $result = ['success' => $success];
+            logApiActivity($pdo, 'insertMultiple', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'delete':
+            $success = deleteRecord($pdo, $input['id']);
+            $result = ['success' => $success];
+            logApiActivity($pdo, 'delete', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'deleteMultiple':
+            $success = deleteMultipleRecords($pdo, $input['ids']);
+            $result = ['success' => $success];
+            logApiActivity($pdo, 'deleteMultiple', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'update':
+            $success = updateRecord($pdo, $input['id'], $input['data']);
+            $result = ['success' => $success];
+            logApiActivity($pdo, 'update', $input, $result);
+            echo json_encode($result);
+            break;
+        case 'updateMultiple':
+            $success = updateMultipleRecords($pdo, $input['data']);
+            $result = ['success' => $success];
+            logApiActivity($pdo, 'updateMultiple', $input, $result);
+            echo json_encode($result);
+            break;
+        default:
+            $result = ['error' => 'Invalid action'];
+            logApiActivity($pdo, 'invalid', $input, $result);
+            echo json_encode($result);
+    }
+}
+?>
