@@ -1,5 +1,5 @@
 <?php
-$token = "7011288395:AAGw0LntfB4s3ItqaT_buL4eIusRF2TZUi8";
+$token = "";
 $apiUrl = "https://api.telegram.org/bot$token/";
 $channelUsername = "@JetApply";
 $dataFile = "user_data.json";
